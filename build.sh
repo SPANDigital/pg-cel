@@ -72,6 +72,10 @@ download_deps() {
 build_extension() {
     log "Building Go archive..."
     go build -buildmode=c-archive -o pg_cel_go.a main.go
+    if [ $? -ne 0 ]; then
+        error "Failed to build Go archive"
+        return 1
+    fi
 
     log "Building PostgreSQL extension..."
     case $PLATFORM in
@@ -81,6 +85,7 @@ build_extension() {
             ;;
         macOS)
             make clean
+            # On macOS, we need additional flags for dynamic linking
             make SHLIB_LINK="-undefined dynamic_lookup pg_cel_go.a -lresolv -framework CoreFoundation"
             ;;
         Windows)
@@ -89,11 +94,24 @@ build_extension() {
             ;;
         *)
             error "Unsupported platform: $PLATFORM"
-            exit 1
+            return 1
             ;;
     esac
 
+    # Check if build was successful
+    if [[ "$PLATFORM" == "Linux" && ! -f pg_cel.so ]]; then
+        error "Build failed: pg_cel.so not found"
+        return 1
+    elif [[ "$PLATFORM" == "macOS" && ! -f pg_cel.dylib ]]; then
+        error "Build failed: pg_cel.dylib not found"
+        return 1
+    elif [[ "$PLATFORM" == "Windows" && ! -f pg_cel.dll ]]; then
+        error "Build failed: pg_cel.dll not found"
+        return 1
+    fi
+
     log "Build completed successfully!"
+    return 0
 }
 
 # Install the extension

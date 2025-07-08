@@ -60,3 +60,7 @@ Thumbs.db
 # Logs
 *.log
 logfile
+
+# Test artifacts
+test.a
+test.h

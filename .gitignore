@@ -30,3 +30,33 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# PostgreSQL extension build artifacts
+*.o
+*.so
+*.dylib
+*.dll
+pg_cel_go.a
+pg_cel_go.h
+pg_wrapper.o
+
+# Distribution packages
+dist/
+*.tar.gz
+*.zip
+
+# PostgreSQL test database
+pg_cel_test
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logfile

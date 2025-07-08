@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  GO_VERSION: '1.21'
+
+jobs:
+  test-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Install PostgreSQL 16
+      run: |
+        sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+        sudo apt-get update
+        sudo apt-get install -y postgresql-16 postgresql-server-dev-16 build-essential
+        
+    - name: Set PostgreSQL environment
+      run: |
+        echo "PATH=/usr/lib/postgresql/16/bin:$PATH" >> $GITHUB_ENV
+        echo "PG_CONFIG=/usr/lib/postgresql/16/bin/pg_config" >> $GITHUB_ENV
+        
+    - name: Download Go dependencies
+      run: go mod download
+      
+    - name: Build extension
+      run: |
+        chmod +x build.sh
+        ./build.sh
+        
+    - name: Run tests
+      run: |
+        sudo systemctl start postgresql
+        sudo -u postgres createdb test_db
+        sudo -u postgres psql -d test_db -c "CREATE EXTENSION pg_cel;"
+        sudo -u postgres psql -d test_db -f test.sql
+
+  test-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Install PostgreSQL 16
+      run: |
+        brew install postgresql@16
+        brew link postgresql@16 --force
+        
+    - name: Set PostgreSQL environment
+      run: |
+        echo "PATH=/opt/homebrew/opt/postgresql@16/bin:$PATH" >> $GITHUB_ENV
+        echo "PG_CONFIG=/opt/homebrew/opt/postgresql@16/bin/pg_config" >> $GITHUB_ENV
+        
+    - name: Download Go dependencies
+      run: go mod download
+      
+    - name: Build extension
+      run: |
+        chmod +x build.sh
+        ./build.sh
+        
+    - name: Run tests
+      run: |
+        initdb -D /tmp/pgdata
+        pg_ctl -D /tmp/pgdata -l /tmp/logfile start
+        sleep 2
+        createdb test_db
+        psql -d test_db -c "CREATE EXTENSION pg_cel;"
+        psql -d test_db -f test.sql
+        pg_ctl -D /tmp/pgdata stop

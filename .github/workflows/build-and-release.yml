@@ -1,0 +1,221 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  GO_VERSION: '1.21'
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pg_version: ['14', '15', '16', '17']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Install PostgreSQL ${{ matrix.pg_version }}
+      run: |
+        sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+        sudo apt-get update
+        sudo apt-get install -y postgresql-${{ matrix.pg_version }} postgresql-server-dev-${{ matrix.pg_version }} build-essential
+        
+    - name: Set PostgreSQL environment
+      run: |
+        echo "PATH=/usr/lib/postgresql/${{ matrix.pg_version }}/bin:$PATH" >> $GITHUB_ENV
+        echo "PG_CONFIG=/usr/lib/postgresql/${{ matrix.pg_version }}/bin/pg_config" >> $GITHUB_ENV
+        
+    - name: Download Go dependencies
+      run: go mod download
+      
+    - name: Build extension
+      run: |
+        chmod +x build.sh
+        ./build.sh
+        
+    - name: Test build
+      run: |
+        # Start PostgreSQL service
+        sudo systemctl start postgresql
+        sudo -u postgres createdb test_db
+        sudo -u postgres psql -d test_db -c "CREATE EXTENSION pg_cel;"
+        sudo -u postgres psql -d test_db -c "SELECT cel_eval('2 + 3');"
+        
+    - name: Package artifacts
+      run: |
+        mkdir -p dist/linux-pg${{ matrix.pg_version }}
+        cp pg_cel.so dist/linux-pg${{ matrix.pg_version }}/
+        cp pg_cel--1.0.sql dist/linux-pg${{ matrix.pg_version }}/
+        cp pg_cel.control dist/linux-pg${{ matrix.pg_version }}/
+        cp README.md dist/linux-pg${{ matrix.pg_version }}/
+        cp LICENSE dist/linux-pg${{ matrix.pg_version }}/
+        tar -czf pg-cel-linux-pg${{ matrix.pg_version }}.tar.gz -C dist/linux-pg${{ matrix.pg_version }} .
+        
+    - name: Upload Linux artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: pg-cel-linux-pg${{ matrix.pg_version }}
+        path: pg-cel-linux-pg${{ matrix.pg_version }}.tar.gz
+
+  build-macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        pg_version: ['14', '15', '16', '17']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Install PostgreSQL ${{ matrix.pg_version }}
+      run: |
+        brew install postgresql@${{ matrix.pg_version }}
+        brew link postgresql@${{ matrix.pg_version }} --force
+        
+    - name: Set PostgreSQL environment
+      run: |
+        echo "PATH=/opt/homebrew/opt/postgresql@${{ matrix.pg_version }}/bin:$PATH" >> $GITHUB_ENV
+        echo "PG_CONFIG=/opt/homebrew/opt/postgresql@${{ matrix.pg_version }}/bin/pg_config" >> $GITHUB_ENV
+        
+    - name: Download Go dependencies
+      run: go mod download
+      
+    - name: Build extension
+      run: |
+        chmod +x build.sh
+        ./build.sh
+        
+    - name: Test build
+      run: |
+        # Initialize and start PostgreSQL
+        initdb -D /tmp/pgdata
+        pg_ctl -D /tmp/pgdata -l /tmp/logfile start
+        sleep 2
+        createdb test_db
+        psql -d test_db -c "CREATE EXTENSION pg_cel;"
+        psql -d test_db -c "SELECT cel_eval('2 + 3');"
+        pg_ctl -D /tmp/pgdata stop
+        
+    - name: Package artifacts
+      run: |
+        mkdir -p dist/macos-pg${{ matrix.pg_version }}
+        cp pg_cel.dylib dist/macos-pg${{ matrix.pg_version }}/
+        cp pg_cel--1.0.sql dist/macos-pg${{ matrix.pg_version }}/
+        cp pg_cel.control dist/macos-pg${{ matrix.pg_version }}/
+        cp README.md dist/macos-pg${{ matrix.pg_version }}/
+        cp LICENSE dist/macos-pg${{ matrix.pg_version }}/
+        tar -czf pg-cel-macos-pg${{ matrix.pg_version }}.tar.gz -C dist/macos-pg${{ matrix.pg_version }} .
+        
+    - name: Upload macOS artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: pg-cel-macos-pg${{ matrix.pg_version }}
+        path: pg-cel-macos-pg${{ matrix.pg_version }}.tar.gz
+
+  test:
+    runs-on: ubuntu-latest
+    needs: [build-linux]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download Linux PG16 artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: pg-cel-linux-pg16
+        
+    - name: Extract and test
+      run: |
+        tar -xzf pg-cel-linux-pg16.tar.gz
+        ls -la
+        
+    - name: Install PostgreSQL 16
+      run: |
+        sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+        sudo apt-get update
+        sudo apt-get install -y postgresql-16 postgresql-server-dev-16
+        
+    - name: Run comprehensive tests
+      run: |
+        sudo systemctl start postgresql
+        sudo -u postgres createdb test_db
+        
+        # Install the extension manually
+        sudo cp pg_cel.so /usr/lib/postgresql/16/lib/
+        sudo cp pg_cel.control /usr/share/postgresql/16/extension/
+        sudo cp pg_cel--1.0.sql /usr/share/postgresql/16/extension/
+        
+        # Create and test extension
+        sudo -u postgres psql -d test_db -c "CREATE EXTENSION pg_cel;"
+        
+        # Run our test suite
+        sudo -u postgres psql -d test_db -f test.sql
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-linux, build-macos, test]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+        
+    - name: Create release directory
+      run: |
+        mkdir -p release
+        find artifacts -name "*.tar.gz" -exec cp {} release/ \;
+        ls -la release/
+        
+    - name: Generate release notes
+      run: |
+        echo "# pg-cel Release ${GITHUB_REF#refs/tags/}" > release_notes.md
+        echo "" >> release_notes.md
+        echo "PostgreSQL extension for CEL (Common Expression Language) evaluation." >> release_notes.md
+        echo "" >> release_notes.md
+        echo "## Supported Platforms" >> release_notes.md
+        echo "- Linux (Ubuntu) with PostgreSQL 14, 15, 16, 17" >> release_notes.md
+        echo "- macOS with PostgreSQL 14, 15, 16, 17" >> release_notes.md
+        echo "" >> release_notes.md
+        echo "## Installation" >> release_notes.md
+        echo "1. Download the appropriate package for your platform and PostgreSQL version" >> release_notes.md
+        echo "2. Extract the package: \`tar -xzf pg-cel-[platform]-pg[version].tar.gz\`" >> release_notes.md
+        echo "3. Copy files to PostgreSQL directories (requires admin privileges)" >> release_notes.md
+        echo "4. In PostgreSQL: \`CREATE EXTENSION pg_cel;\`" >> release_notes.md
+        echo "" >> release_notes.md
+        echo "## Features" >> release_notes.md
+        echo "- Dynamic CEL expression evaluation with JSON data" >> release_notes.md
+        echo "- High-performance dual caching system" >> release_notes.md
+        echo "- Support for all CEL language features" >> release_notes.md
+        echo "- Type-safe convenience functions" >> release_notes.md
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release/*
+        body_path: release_notes.md
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

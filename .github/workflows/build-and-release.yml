@@ -2,30 +2,8 @@ name: Build and Release
 
 on:
   push:
-    ta    - name: Build extension
-      run: |
-        chmod +x build.sh
-        ./build.sh
-        
-    - name: Verify build output
-      run: |
-        echo "Checking build artifacts..."
-        ls -la *.so || echo "No .so files found"
-        ls -la pg_cel* || echo "No pg_cel files found"
-        
-    - name: Install extension
-      run: |
-        sudo make install
-        
-    - name: Test build
-      run: |
-        # Start PostgreSQL service more reliably
-        sudo systemctl start postgresql
-        sudo systemctl status postgresql
-        sleep 3
-        sudo -u postgres createdb test_db || echo "Database may already exist"
-        sudo -u postgres psql -d test_db -c "CREATE EXTENSION IF NOT EXISTS pg_cel;"
-        sudo -u postgres psql -d test_db -c "SELECT cel_eval('2 + 3');"
+    tags:
+      - 'v*'
   pull_request:
     branches: [ main ]
   workflow_dispatch:

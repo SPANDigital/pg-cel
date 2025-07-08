@@ -274,9 +274,6 @@ func pg_cel_eval_json(expressionStr *C.char, jsonData *C.char) *C.char {
 	// Convert C strings to Go strings
 	exprString := C.GoString(expressionStr)
 	jsonString := C.GoString(jsonData)
-	
-	// Print to stderr (PostgreSQL will capture this)
-	fmt.Fprintf(os.Stderr, "DEBUG: Expression: '%s', JSON: '%s'\n", exprString, jsonString)
 
 	// Parse JSON
 	var data map[string]interface{}
@@ -285,13 +282,10 @@ func pg_cel_eval_json(expressionStr *C.char, jsonData *C.char) *C.char {
 		return C.CString(errorMsg)
 	}
 	
-	fmt.Fprintf(os.Stderr, "DEBUG: Parsed JSON: %v\n", data)
-	
 	// Try direct variable access for simple expressions (significantly faster)
 	trimmedExpr := strings.TrimSpace(exprString)
 	if val, ok := data[trimmedExpr]; ok {
 		resultStr := fmt.Sprintf("%v", val)
-		fmt.Fprintf(os.Stderr, "DEBUG: Direct variable access succeeded for '%s': %v\n", trimmedExpr, resultStr)
 		return C.CString(resultStr)
 	}
 	
@@ -302,7 +296,6 @@ func pg_cel_eval_json(expressionStr *C.char, jsonData *C.char) *C.char {
 	if strings.Contains(trimmedExpr, ".") && !strings.Contains(trimmedExpr, " ") {
 		if val, ok := enhancedData[trimmedExpr]; ok {
 			resultStr := fmt.Sprintf("%v", val)
-			fmt.Fprintf(os.Stderr, "DEBUG: Dotted path resolution succeeded for '%s': %v\n", trimmedExpr, resultStr)
 			return C.CString(resultStr)
 		}
 	}
@@ -312,30 +305,24 @@ func pg_cel_eval_json(expressionStr *C.char, jsonData *C.char) *C.char {
 	
 	// Check if we have a cached program for this expression + variable structure
 	if cachedProgram, found := programCache.Get(cacheKey); found {
-		fmt.Fprintf(os.Stderr, "DEBUG: Cache hit for key: %s\n", cacheKey)
 		prg := cachedProgram.(cel.Program)
 		
 		// Execute the cached program with the JSON data
-		out, details, err := prg.Eval(data)
+		out, _, err := prg.Eval(data)
 		if err != nil {
 			errorMsg := fmt.Sprintf("CEL evaluation error: %v", err)
-			fmt.Fprintf(os.Stderr, "DEBUG: Evaluation error: %v\n", err)
 			return C.CString(errorMsg)
 		}
 		
 		// Convert result to string
 		resultStr := fmt.Sprintf("%v", out)
-		fmt.Fprintf(os.Stderr, "DEBUG: Cached evaluation result: %v (type: %T), details: %v\n", resultStr, out, details)
 		return C.CString(resultStr)
 	}
-	
-	fmt.Fprintf(os.Stderr, "DEBUG: Cache miss for key: %s, creating dynamic environment\n", cacheKey)
 	
 	// Create a dynamic environment with all variables from the JSON
 	celEnv, err := createDynamicCELEnv(data)
 	if err != nil {
 		errorMsg := fmt.Sprintf("CEL environment creation error: %v", err)
-		fmt.Fprintf(os.Stderr, "DEBUG: Environment creation error: %v\n", err)
 		return C.CString(errorMsg)
 	}
 
@@ -343,7 +330,6 @@ func pg_cel_eval_json(expressionStr *C.char, jsonData *C.char) *C.char {
 	ast, issues := celEnv.Compile(exprString)
 	if issues != nil && issues.Err() != nil {
 		errorMsg := fmt.Sprintf("CEL compilation error: %v", issues.Err())
-		fmt.Fprintf(os.Stderr, "DEBUG: Compilation error: %v\n", issues.Err())
 		return C.CString(errorMsg)
 	}
 
@@ -351,25 +337,21 @@ func pg_cel_eval_json(expressionStr *C.char, jsonData *C.char) *C.char {
 	prg, err := celEnv.Program(ast)
 	if err != nil {
 		errorMsg := fmt.Sprintf("CEL program creation error: %v", err)
-		fmt.Fprintf(os.Stderr, "DEBUG: Program creation error: %v\n", err)
 		return C.CString(errorMsg)
 	}
 	
 	// Cache the compiled program with the unique key
 	programCache.Set(cacheKey, prg, 1)
-	fmt.Fprintf(os.Stderr, "DEBUG: Added program to cache with key: %s\n", cacheKey)
 
 	// Execute the expression with the JSON data
-	out, details, err := prg.Eval(data)
+	out, _, err := prg.Eval(data)
 	if err != nil {
 		errorMsg := fmt.Sprintf("CEL evaluation error: %v", err)
-		fmt.Fprintf(os.Stderr, "DEBUG: Evaluation error: %v\n", err)
 		return C.CString(errorMsg)
 	}
 
 	// Convert result to string
 	resultStr := fmt.Sprintf("%v", out)
-	fmt.Fprintf(os.Stderr, "DEBUG: Fresh evaluation result: %v (type: %T), details: %v\n", resultStr, out, details)
 	return C.CString(resultStr)
 }
 

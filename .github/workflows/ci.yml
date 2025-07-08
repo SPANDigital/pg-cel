@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 env:
-  GO_VERSION: '1.21'
+  GO_VERSION: '1.22'
 
 jobs:
   test-linux:
@@ -24,7 +24,7 @@ jobs:
     - name: Install PostgreSQL 16
       run: |
         sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /etc/apt/trusted.gpg.d/pgdg.asc
         sudo apt-get update
         sudo apt-get install -y postgresql-16 postgresql-server-dev-16 build-essential
         
@@ -41,11 +41,27 @@ jobs:
         chmod +x build.sh
         ./build.sh
         
+    - name: Install extension
+      run: |
+        # Debug: Show pg_config paths
+        pg_config --version
+        pg_config --pkglibdir
+        pg_config --sharedir
+        sudo make install
+        # Debug: Check if files were installed
+        ls -la $(pg_config --pkglibdir)/ | grep pg_cel || echo "No pg_cel library found"
+        ls -la $(pg_config --sharedir)/extension/ | grep pg_cel || echo "No pg_cel extension files found"
+        
     - name: Run tests
       run: |
         sudo systemctl start postgresql
         sudo -u postgres createdb test_db
+        # Debug: Check if extension files are installed
+        sudo -u postgres psql -c "SHOW shared_preload_libraries;"
+        sudo -u postgres psql -c "SELECT version();"
+        # Try to create extension
         sudo -u postgres psql -d test_db -c "CREATE EXTENSION pg_cel;"
+        # Run simplified tests
         sudo -u postgres psql -d test_db -f test.sql
 
   test-macos:
@@ -76,6 +92,10 @@ jobs:
       run: |
         chmod +x build.sh
         ./build.sh
+        
+    - name: Install extension
+      run: |
+        make install
         
     - name: Run tests
       run: |

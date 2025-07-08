@@ -54,14 +54,46 @@ jobs:
         
     - name: Run tests
       run: |
+        # Start PostgreSQL with more robust setup
         sudo systemctl start postgresql
+        sudo systemctl status postgresql
+        
+        # Wait for PostgreSQL to be ready
+        sudo -u postgres pg_isready || sleep 2
+        sudo -u postgres pg_isready || sleep 5
+        sudo -u postgres pg_isready
+        
+        # Create test database
         sudo -u postgres createdb test_db
+        
         # Debug: Check if extension files are installed
+        echo "=== PostgreSQL Directories ==="
+        sudo -u postgres psql -c "SHOW config_file;"
         sudo -u postgres psql -c "SHOW shared_preload_libraries;"
         sudo -u postgres psql -c "SELECT version();"
-        # Try to create extension
-        sudo -u postgres psql -d test_db -c "CREATE EXTENSION pg_cel;"
-        # Run simplified tests
+        
+        echo "=== Extension Files ==="
+        echo "Library directory:"
+        ls -la $(pg_config --pkglibdir)/ | grep pg_cel || echo "No pg_cel library found"
+        echo "Extension directory:"  
+        ls -la $(pg_config --sharedir)/extension/ | grep pg_cel || echo "No pg_cel extension files found"
+        
+        # Try to create extension with detailed error reporting
+        echo "=== Creating Extension ==="
+        sudo -u postgres psql -d test_db -c "CREATE EXTENSION pg_cel;" || {
+          echo "Extension creation failed. Checking available extensions:"
+          sudo -u postgres psql -d test_db -c "SELECT name FROM pg_available_extensions WHERE name LIKE '%cel%';"
+          echo "Checking for any errors in PostgreSQL logs:"
+          sudo tail -20 /var/log/postgresql/postgresql-*.log 2>/dev/null || echo "No PostgreSQL logs found"
+          exit 1
+        }
+        
+        # Run basic functionality test
+        echo "=== Testing Basic Functionality ==="
+        sudo -u postgres psql -d test_db -c "SELECT cel_eval('2 + 3');" || exit 1
+        
+        # Run all tests
+        echo "=== Running Full Test Suite ==="
         sudo -u postgres psql -d test_db -f test.sql
 
   test-macos:
@@ -99,10 +131,46 @@ jobs:
         
     - name: Run tests
       run: |
+        # Initialize and start PostgreSQL
         initdb -D /tmp/pgdata
         pg_ctl -D /tmp/pgdata -l /tmp/logfile start
-        sleep 2
+        sleep 3
+        
+        # Wait for PostgreSQL to be ready
+        pg_isready || sleep 2
+        pg_isready || sleep 5
+        pg_isready
+        
+        # Create test database
         createdb test_db
-        psql -d test_db -c "CREATE EXTENSION pg_cel;"
+        
+        # Debug: Check if extension files are installed
+        echo "=== PostgreSQL Info ==="
+        psql -d test_db -c "SELECT version();"
+        
+        echo "=== Extension Files ==="
+        echo "Library directory:"
+        ls -la $(pg_config --pkglibdir)/ | grep pg_cel || echo "No pg_cel library found"
+        echo "Extension directory:"  
+        ls -la $(pg_config --sharedir)/extension/ | grep pg_cel || echo "No pg_cel extension files found"
+        
+        # Try to create extension with detailed error reporting
+        echo "=== Creating Extension ==="
+        psql -d test_db -c "CREATE EXTENSION pg_cel;" || {
+          echo "Extension creation failed. Checking available extensions:"
+          psql -d test_db -c "SELECT name FROM pg_available_extensions WHERE name LIKE '%cel%';"
+          echo "Checking for any errors in PostgreSQL logs:"
+          tail -20 /tmp/logfile 2>/dev/null || echo "No PostgreSQL logs found"
+          exit 1
+        }
+        
+        # Run basic functionality test
+        echo "=== Testing Basic Functionality ==="
+        psql -d test_db -c "SELECT cel_eval('2 + 3');" || exit 1
+        
+        # Run all tests
+        echo "=== Running Full Test Suite ==="
         psql -d test_db -f test.sql
+        
+        # Cleanup
         pg_ctl -D /tmp/pgdata stop

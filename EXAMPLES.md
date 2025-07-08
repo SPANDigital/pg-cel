@@ -112,6 +112,8 @@ WHERE filter_records(
 
 ### Cache Management
 
+The pg-cel extension implements a high-performance dual caching system using optimized, non-cryptographic hashing (FNV) for quick cache key generation:
+
 ```sql
 -- View cache statistics
 SELECT cel_cache_stats();

@@ -3,10 +3,10 @@ package main
 import "C"
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"log"
 	"os"
 	"sort"
@@ -97,6 +97,8 @@ func getCELType(value interface{}) *exprpb.Type {
 }
 
 // Helper function to create a cache key based on expression and JSON structure
+// Uses FNV hash which is faster than cryptographic hashes while still providing
+// good collision resistance for cache key use cases
 func createCacheKey(expression string, jsonData map[string]interface{}) string {
 	// Create a signature based on the JSON keys and their types
 	var keyTypes []string
@@ -133,8 +135,8 @@ func createCacheKey(expression string, jsonData map[string]interface{}) string {
 	sort.Strings(keyTypes)
 	signature := strings.Join(keyTypes, ";")
 	
-	// Create hash of expression + signature
-	hasher := sha256.New()
+	// Create hash of expression + signature using FNV (faster non-cryptographic hash)
+	hasher := fnv.New64a()
 	hasher.Write([]byte(expression + "|" + signature))
 	return hex.EncodeToString(hasher.Sum(nil))
 }

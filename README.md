@@ -31,32 +31,29 @@ This extension allows you to evaluate [Google's CEL (Common Expression Language)
 
 ## Installation
 
-### Pre-built Releases (Recommended)
+For pre-built binaries, please download from the [GitHub Releases](https://github.com/SPANDigital/pg-cel/releases) page. Choose the appropriate package for your platform and PostgreSQL version.
 
-Download pre-built packages from our [Releases page](https://github.com/your-username/pg-cel/releases):
+### From Binaries
 
-- **Linux**: `pg-cel-linux-pg[14|15|16|17].tar.gz`
-- **macOS**: `pg-cel-macos-pg[14|15|16|17].tar.gz`
+1. Download the appropriate package for your platform and PostgreSQL version
+2. Extract the package: `tar -xzf pg-cel-[platform]-pg[version].tar.gz`
+3. Copy files to PostgreSQL directories (requires admin privileges):
+   ```bash
+   # For Linux
+   sudo cp pg_cel.so $(pg_config --pkglibdir)/
+   sudo cp pg_cel.control $(pg_config --sharedir)/extension/
+   sudo cp pg_cel--1.0.sql $(pg_config --sharedir)/extension/
+   
+   # For macOS
+   sudo cp pg_cel.dylib $(pg_config --pkglibdir)/
+   sudo cp pg_cel.control $(pg_config --sharedir)/extension/
+   sudo cp pg_cel--1.0.sql $(pg_config --sharedir)/extension/
+   ```
+4. In PostgreSQL: `CREATE EXTENSION pg_cel;`
+
+### From Source
 
 See [INSTALL.md](INSTALL.md) for detailed installation instructions.
-
-### Build from Source
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd pg-cel
-
-# Build the extension
-./build.sh
-
-# Install the extension
-sudo make install  # On Linux
-make install       # On macOS
-
-# In PostgreSQL, create the extension
-CREATE EXTENSION pg_cel;
-```
 
 ## Functions
 

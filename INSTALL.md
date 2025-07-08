@@ -10,16 +10,12 @@ This guide provides detailed installation instructions for the pg-cel PostgreSQL
 
 ## Download
 
-Visit the [Releases page](https://github.com/your-username/pg-cel/releases) and download the appropriate package for your platform and PostgreSQL version:
+Visit the [Releases page](https://github.com/SPANDigital/pg-cel/releases) and download the appropriate package for your platform and PostgreSQL version:
 
-- `pg-cel-linux-pg14.tar.gz` - Linux with PostgreSQL 14
 - `pg-cel-linux-pg15.tar.gz` - Linux with PostgreSQL 15
 - `pg-cel-linux-pg16.tar.gz` - Linux with PostgreSQL 16
-- `pg-cel-linux-pg17.tar.gz` - Linux with PostgreSQL 17
-- `pg-cel-macos-pg14.tar.gz` - macOS with PostgreSQL 14
 - `pg-cel-macos-pg15.tar.gz` - macOS with PostgreSQL 15
 - `pg-cel-macos-pg16.tar.gz` - macOS with PostgreSQL 16
-- `pg-cel-macos-pg17.tar.gz` - macOS with PostgreSQL 17
 
 ## Installation
 
@@ -28,19 +24,18 @@ Visit the [Releases page](https://github.com/your-username/pg-cel/releases) and 
 1. **Extract the package:**
    ```bash
    tar -xzf pg-cel-linux-pg16.tar.gz
-   cd pg-cel-linux-pg16
    ```
 
 2. **Find PostgreSQL directories:**
    ```bash
-   pg_config --libdir     # Extension library directory
-   pg_config --sharedir   # Share directory
+   pg_config --pkglibdir   # Extension library directory
+   pg_config --sharedir    # Share directory
    ```
 
 3. **Install the extension files:**
    ```bash
    # Copy the shared library
-   sudo cp pg_cel.so $(pg_config --libdir)/
+   sudo cp pg_cel.so $(pg_config --pkglibdir)/
    
    # Copy the control and SQL files
    sudo cp pg_cel.control $(pg_config --sharedir)/extension/

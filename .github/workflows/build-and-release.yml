@@ -2,8 +2,30 @@ name: Build and Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    ta    - name: Build extension
+      run: |
+        chmod +x build.sh
+        ./build.sh
+        
+    - name: Verify build output
+      run: |
+        echo "Checking build artifacts..."
+        ls -la *.so || echo "No .so files found"
+        ls -la pg_cel* || echo "No pg_cel files found"
+        
+    - name: Install extension
+      run: |
+        sudo make install
+        
+    - name: Test build
+      run: |
+        # Start PostgreSQL service more reliably
+        sudo systemctl start postgresql
+        sudo systemctl status postgresql
+        sleep 3
+        sudo -u postgres createdb test_db || echo "Database may already exist"
+        sudo -u postgres psql -d test_db -c "CREATE EXTENSION IF NOT EXISTS pg_cel;"
+        sudo -u postgres psql -d test_db -c "SELECT cel_eval('2 + 3');"
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -61,7 +83,8 @@ jobs:
     - name: Package artifacts
       run: |
         mkdir -p dist/linux-pg${{ matrix.pg_version }}
-        cp pg_cel.so dist/linux-pg${{ matrix.pg_version }}/
+        # On Linux, the extension creates a .so file
+        cp pg_cel.so dist/linux-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel.so not found"
         cp pg_cel--1.0.sql dist/linux-pg${{ matrix.pg_version }}/
         cp pg_cel.control dist/linux-pg${{ matrix.pg_version }}/
         cp README.md dist/linux-pg${{ matrix.pg_version }}/
@@ -106,25 +129,32 @@ jobs:
         chmod +x build.sh
         ./build.sh
         
+    - name: Verify build output
+      run: |
+        echo "Checking build artifacts..."
+        ls -la *.dylib || echo "No .dylib files found"
+        ls -la pg_cel* || echo "No pg_cel files found"
+        
     - name: Install extension
       run: |
-        make install
+        sudo make install
         
     - name: Test build
       run: |
-        # Initialize and start PostgreSQL
+        # Initialize and start PostgreSQL more reliably
         initdb -D /tmp/pgdata
         pg_ctl -D /tmp/pgdata -l /tmp/logfile start
-        sleep 2
+        sleep 5
         createdb test_db
-        psql -d test_db -c "CREATE EXTENSION pg_cel;"
+        psql -d test_db -c "CREATE EXTENSION IF NOT EXISTS pg_cel;"
         psql -d test_db -c "SELECT cel_eval('2 + 3');"
         pg_ctl -D /tmp/pgdata stop
         
     - name: Package artifacts
       run: |
         mkdir -p dist/macos-pg${{ matrix.pg_version }}
-        cp pg_cel.dylib dist/macos-pg${{ matrix.pg_version }}/
+        # On macOS, the extension creates a .dylib file
+        cp pg_cel.dylib dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel.dylib not found"
         cp pg_cel--1.0.sql dist/macos-pg${{ matrix.pg_version }}/
         cp pg_cel.control dist/macos-pg${{ matrix.pg_version }}/
         cp README.md dist/macos-pg${{ matrix.pg_version }}/

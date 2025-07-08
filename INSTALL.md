@@ -12,10 +12,14 @@ This guide provides detailed installation instructions for the pg-cel PostgreSQL
 
 Visit the [Releases page](https://github.com/SPANDigital/pg-cel/releases) and download the appropriate package for your platform and PostgreSQL version:
 
+- `pg-cel-linux-pg14.tar.gz` - Linux with PostgreSQL 14
 - `pg-cel-linux-pg15.tar.gz` - Linux with PostgreSQL 15
 - `pg-cel-linux-pg16.tar.gz` - Linux with PostgreSQL 16
+- `pg-cel-linux-pg17.tar.gz` - Linux with PostgreSQL 17
+- `pg-cel-macos-pg14.tar.gz` - macOS with PostgreSQL 14
 - `pg-cel-macos-pg15.tar.gz` - macOS with PostgreSQL 15
 - `pg-cel-macos-pg16.tar.gz` - macOS with PostgreSQL 16
+- `pg-cel-macos-pg17.tar.gz` - macOS with PostgreSQL 17
 
 ## Installation
 

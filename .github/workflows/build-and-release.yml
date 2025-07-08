@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        pg_version: ['15', '16']
+        pg_version: ['14', '15', '16', '17']
       fail-fast: false
     
     steps:
@@ -94,7 +94,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        pg_version: ['15', '16']
+        pg_version: ['14', '15', '16', '17']
       fail-fast: false
     
     steps:
@@ -282,8 +282,8 @@ jobs:
         echo "PostgreSQL extension for CEL (Common Expression Language) evaluation." >> release_notes.md
         echo "" >> release_notes.md
         echo "## Supported Platforms" >> release_notes.md
-        echo "- Linux (Ubuntu) with PostgreSQL 15, 16" >> release_notes.md
-        echo "- macOS with PostgreSQL 15, 16" >> release_notes.md
+        echo "- Linux (Ubuntu) with PostgreSQL 14, 15, 16, 17" >> release_notes.md
+        echo "- macOS with PostgreSQL 14, 15, 16, 17" >> release_notes.md
         echo "" >> release_notes.md
         echo "## Installation" >> release_notes.md
         echo "1. Download the appropriate package for your platform and PostgreSQL version" >> release_notes.md

@@ -109,6 +109,7 @@ jobs:
     
     - name: Install PostgreSQL 16
       run: |
+        # Use PostgreSQL 16 for CI testing, we test all versions in the build-and-release workflow
         brew install postgresql@16
         brew link postgresql@16 --force
         

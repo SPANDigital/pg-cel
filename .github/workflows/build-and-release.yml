@@ -135,6 +135,7 @@ jobs:
       run: |
         echo "Checking build artifacts..."
         ls -la *.dylib || echo "No .dylib files found"
+        ls -la *.so || echo "No .so files found"
         ls -la pg_cel* || echo "No pg_cel files found"
         
     - name: Install extension
@@ -157,8 +158,14 @@ jobs:
     - name: Package artifacts
       run: |
         mkdir -p dist/macos-pg${{ matrix.pg_version }}
-        # On macOS, the extension creates a .dylib file
-        cp pg_cel.dylib dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel.dylib not found"
+        # On macOS, the extension can create either a .dylib or .so file
+        if [ -f pg_cel.dylib ]; then
+          cp pg_cel.dylib dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel.dylib not found"
+        elif [ -f pg_cel.so ]; then
+          cp pg_cel.so dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel.so not found"
+        else
+          echo "Warning: No extension binary found"
+        fi
         cp pg_cel--1.0.sql dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel--1.0.sql not found"
         cp pg_cel.control dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel.control not found"
         cp README.md dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: README.md not found"

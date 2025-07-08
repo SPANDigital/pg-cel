@@ -54,24 +54,31 @@ Visit the [Releases page](https://github.com/SPANDigital/pg-cel/releases) and do
 1. **Extract the package:**
    ```bash
    tar -xzf pg-cel-macos-pg16.tar.gz
-   cd pg-cel-macos-pg16
    ```
 
 2. **Install the extension files:**
    ```bash
-   # Copy the shared library
-   cp pg_cel.dylib $(pg_config --libdir)/
+   # Copy the shared library (could be .dylib or .so)
+   if [ -f pg_cel.dylib ]; then
+     sudo cp pg_cel.dylib $(pg_config --pkglibdir)/
+   elif [ -f pg_cel.so ]; then
+     sudo cp pg_cel.so $(pg_config --pkglibdir)/
+   fi
    
    # Copy the control and SQL files
-   cp pg_cel.control $(pg_config --sharedir)/extension/
-   cp pg_cel--1.0.sql $(pg_config --sharedir)/extension/
+   sudo cp pg_cel.control $(pg_config --sharedir)/extension/
+   sudo cp pg_cel--1.0.sql $(pg_config --sharedir)/extension/
    ```
 
 3. **Set correct permissions:**
    ```bash
-   chmod 755 $(pg_config --libdir)/pg_cel.dylib
-   chmod 644 $(pg_config --sharedir)/extension/pg_cel.control
-   chmod 644 $(pg_config --sharedir)/extension/pg_cel--1.0.sql
+   # For dylib
+   [ -f $(pg_config --pkglibdir)/pg_cel.dylib ] && sudo chmod 755 $(pg_config --pkglibdir)/pg_cel.dylib
+   # For so
+   [ -f $(pg_config --pkglibdir)/pg_cel.so ] && sudo chmod 755 $(pg_config --pkglibdir)/pg_cel.so
+   
+   sudo chmod 644 $(pg_config --sharedir)/extension/pg_cel.control
+   sudo chmod 644 $(pg_config --sharedir)/extension/pg_cel--1.0.sql
    ```
 
 ## Enable the Extension

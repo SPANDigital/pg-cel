@@ -98,12 +98,12 @@ build_extension() {
             ;;
     esac
 
-    # Check if build was successful
+    # Check if build was successful - macOS can produce either .dylib or .so
     if [[ "$PLATFORM" == "Linux" && ! -f pg_cel.so ]]; then
         error "Build failed: pg_cel.so not found"
         return 1
-    elif [[ "$PLATFORM" == "macOS" && ! -f pg_cel.dylib ]]; then
-        error "Build failed: pg_cel.dylib not found"
+    elif [[ "$PLATFORM" == "macOS" && ! -f pg_cel.dylib && ! -f pg_cel.so ]]; then
+        error "Build failed: neither pg_cel.dylib nor pg_cel.so was found"
         return 1
     elif [[ "$PLATFORM" == "Windows" && ! -f pg_cel.dll ]]; then
         error "Build failed: pg_cel.dll not found"

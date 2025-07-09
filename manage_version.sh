@@ -66,26 +66,86 @@ update_control_version() {
 
 # Update Makefile DATA section
 update_makefile() {
-    local base_version="$1"
+    local new_version="$1"
     
-    # Find all SQL files and create the DATA line
-    local sql_files=$(ls ${EXTENSION_NAME}--*.sql 2>/dev/null | tr '\n' ' ' | sed 's/ $//')
+    # Find all SQL files and organize them
+    local install_scripts=$(ls ${EXTENSION_NAME}--[0-9]*.sql 2>/dev/null | grep -v -- '--.*--' | sort -V | tr '\n' ' ' | sed 's/ $//')
+    local upgrade_scripts=$(ls ${EXTENSION_NAME}--*--*.sql 2>/dev/null | sort | tr '\n' ' ' | sed 's/ $//')
     
-    if [[ -n "$sql_files" ]]; then
+    if [[ -n "$install_scripts" || -n "$upgrade_scripts" ]]; then
         # Use a more robust approach to update the Makefile
-        if grep -q "^DATA = " Makefile; then
-            sed -i.bak "s/^DATA = .*/DATA = $sql_files/" Makefile
+        if grep -q "^INSTALL_SCRIPTS = " Makefile; then
+            # Update existing organized structure
+            sed -i.bak "s/^INSTALL_SCRIPTS = .*/INSTALL_SCRIPTS = $install_scripts/" Makefile
+            sed -i.bak "s/^UPGRADE_SCRIPTS = .*/UPGRADE_SCRIPTS = $upgrade_scripts/" Makefile
+            rm Makefile.bak 2>/dev/null || true
+            log "Updated Makefile with organized structure"
+        elif grep -q "^DATA = " Makefile; then
+            # Convert old structure to new organized structure
+            local all_scripts="$install_scripts $upgrade_scripts"
+            sed -i.bak "s/^DATA = .*/DATA = $all_scripts/" Makefile
             rm Makefile.bak
-            log "Updated Makefile DATA section: $sql_files"
+            log "Updated Makefile DATA section: $all_scripts"
         else
             error "Could not find DATA line in Makefile"
         fi
+        
+        log "  Install scripts: $install_scripts"
+        log "  Upgrade scripts: $upgrade_scripts"
     else
         error "No SQL files found"
     fi
 }
 
-# Main version bump function
+# Clean up old versions (keep only latest N versions)
+cleanup_old_versions() {
+    local keep_versions=${1:-3}  # Default: keep latest 3 versions
+    
+    log "Cleaning up old extension versions (keeping latest $keep_versions versions)..."
+    
+    # Get all install scripts sorted by version
+    local install_scripts=($(ls ${EXTENSION_NAME}--[0-9]*.sql 2>/dev/null | grep -v -- '--.*--' | sort -V))
+    local total_installs=${#install_scripts[@]}
+    
+    if [[ $total_installs -le $keep_versions ]]; then
+        log "Only $total_installs installation scripts found, nothing to clean up"
+        return
+    fi
+    
+    # Calculate how many to remove
+    local to_remove=$((total_installs - keep_versions))
+    log "Found $total_installs installation scripts, removing oldest $to_remove"
+    
+    # Remove oldest install scripts and their associated upgrade scripts
+    for ((i=0; i<to_remove; i++)); do
+        local old_script="${install_scripts[i]}"
+        local version=$(echo "$old_script" | sed "s/${EXTENSION_NAME}--\([^.]*\.[^.]*\.[^.]*\)\.sql/\1/")
+        
+        log "Removing version $version files:"
+        
+        # Remove install script
+        if [[ -f "$old_script" ]]; then
+            log "  - $old_script"
+            rm "$old_script"
+        fi
+        
+        # Remove upgrade scripts involving this version
+        local upgrade_scripts=$(ls ${EXTENSION_NAME}--*${version}*.sql 2>/dev/null | grep -- '--.*--' || true)
+        if [[ -n "$upgrade_scripts" ]]; then
+            echo "$upgrade_scripts" | while read -r upgrade_script; do
+                if [[ -f "$upgrade_script" ]]; then
+                    log "  - $upgrade_script"
+                    rm "$upgrade_script"
+                fi
+            done
+        fi
+    done
+    
+    # Update Makefile
+    update_makefile $(get_current_version)
+    
+    log "Cleanup completed. Run './manage_version.sh status' to see current files."
+}
 bump_version() {
     local version_type="$1"
     local current_version=$(get_current_version)
@@ -145,8 +205,24 @@ show_status() {
     local current_version=$(get_current_version)
     log "Extension: $EXTENSION_NAME"
     log "Current version: $current_version"
-    log "Available SQL files:"
-    ls ${EXTENSION_NAME}--*.sql 2>/dev/null | sed 's/^/  - /' || echo "  No SQL files found"
+    
+    # Show organized file listing
+    local install_scripts=$(ls ${EXTENSION_NAME}--[0-9]*.sql 2>/dev/null | grep -v -- '--.*--' | sort -V)
+    local upgrade_scripts=$(ls ${EXTENSION_NAME}--*--*.sql 2>/dev/null | sort)
+    
+    if [[ -n "$install_scripts" ]]; then
+        log "Installation scripts:"
+        echo "$install_scripts" | sed 's/^/  - /'
+    fi
+    
+    if [[ -n "$upgrade_scripts" ]]; then
+        log "Upgrade scripts:"
+        echo "$upgrade_scripts" | sed 's/^/  - /'
+    fi
+    
+    if [[ -z "$install_scripts" && -z "$upgrade_scripts" ]]; then
+        log "No SQL files found"
+    fi
     
     # Show available upgrade paths
     if command -v psql >/dev/null 2>&1; then
@@ -164,19 +240,23 @@ Usage: $0 <command> [options]
 
 Commands:
   bump <major|minor|patch>  Bump version and create upgrade script
-  status                    Show current version and available files
+  status                    Show current version and available files  
+  cleanup [N]               Remove old versions (keep latest N, default: 3)
   help                      Show this help message
 
 Examples:
   $0 bump patch            Bump patch version (1.0.0 → 1.0.1)
   $0 bump minor            Bump minor version (1.0.0 → 1.1.0)
   $0 bump major            Bump major version (1.0.0 → 2.0.0)
-  $0 status                Show current status
+  $0 status                Show current status with organized file listing
+  $0 cleanup 2             Keep only latest 2 versions, remove older ones
+  $0 cleanup               Keep only latest 3 versions (default)
 
 Note: This script follows PostgreSQL extension best practices:
 - Uses semantic versioning (major.minor.patch)
 - Creates upgrade scripts for version transitions
 - Updates control file and Makefile automatically
+- Organizes files by type (installation vs upgrade scripts)
 EOF
 }
 
@@ -190,6 +270,9 @@ case "${1:-help}" in
         ;;
     status)
         show_status
+        ;;
+    cleanup)
+        cleanup_old_versions "$2"
         ;;
     help|--help|-h)
         usage

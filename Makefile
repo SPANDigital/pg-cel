@@ -1,5 +1,13 @@
 EXTENSION = pg_cel
-DATA = pg_cel--1.0.0.sql pg_cel--1.0.0--1.0.6.sql pg_cel--1.0.6.sql pg_cel--1.0.6--1.0.7.sql pg_cel--1.0.7.sql
+
+# Extension SQL files (organized by type)
+# Installation scripts (base versions)
+INSTALL_SCRIPTS = pg_cel--1.0.6.sql pg_cel--1.0.7.sql
+# Upgrade scripts (version transitions)  
+UPGRADE_SCRIPTS = pg_cel--1.0.6--1.0.7.sql
+# All SQL files for PostgreSQL
+DATA = $(INSTALL_SCRIPTS) $(UPGRADE_SCRIPTS)
+
 MODULE_big = pg_cel
 OBJS = pg_wrapper.o
 

@@ -178,7 +178,7 @@ package_extension() {
     cp pg_cel_go.h dist/$PACKAGE_NAME/ 2>/dev/null || true
     
     # Always copy the standard SQL file
-    cp pg_cel--1.0.sql dist/$PACKAGE_NAME/ 2>/dev/null || true
+    cp pg_cel--*.sql dist/$PACKAGE_NAME/ 2>/dev/null || true
 
     # Create archive
     cd dist

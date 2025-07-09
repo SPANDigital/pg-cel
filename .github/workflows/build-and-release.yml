@@ -90,7 +90,7 @@ jobs:
         cp pg_cel.so dist/linux-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel.so not found"
         
         # Always copy the standard SQL file
-        cp pg_cel--1.0.sql dist/linux-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel--1.0.sql not found"
+        cp pg_cel--*.sql dist/linux-pg${{ matrix.pg_version }}/ || echo "Warning: SQL files not found"
         
         cp pg_cel.control dist/linux-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel.control not found"
         cp README.md dist/linux-pg${{ matrix.pg_version }}/ || echo "Warning: README.md not found"
@@ -193,7 +193,7 @@ jobs:
         fi
         
         # Always copy the standard SQL file
-        cp pg_cel--1.0.sql dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel--1.0.sql not found"
+        cp pg_cel--*.sql dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: SQL files not found"
         
         cp pg_cel.control dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel.control not found"
         cp README.md dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: README.md not found"
@@ -262,7 +262,7 @@ jobs:
         if [ -f pg_cel.so ]; then
           sudo cp pg_cel.so /usr/lib/postgresql/16/lib/ || echo "Warning: Could not copy pg_cel.so"
           sudo cp pg_cel.control /usr/share/postgresql/16/extension/ || echo "Warning: Could not copy pg_cel.control"
-          sudo cp pg_cel--1.0.sql /usr/share/postgresql/16/extension/ || echo "Warning: Could not copy pg_cel--1.0.sql"
+          sudo cp pg_cel--*.sql /usr/share/postgresql/16/extension/ || echo "Warning: Could not copy SQL files"
         fi
         
         # Create and test extension

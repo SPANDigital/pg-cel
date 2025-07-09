@@ -10,17 +10,24 @@ The `pg-cel` extension uses **semantic versioning** (MAJOR.MINOR.PATCH) and supp
 
 ### Extension Version vs. Release Version
 
-- **Extension Version**: Used by PostgreSQL's extension system (e.g., `1.0.0`, `1.1.0`, `2.0.0`)
+- **Extension Version**: Used by PostgreSQL's extension system (e.g., `1.0.6`, `1.1.0`, `2.0.0`)
 - **Release Version**: Git tags for software releases (e.g., `v1.0.6`, `v1.0.7`)
 
-The extension version follows semantic versioning and changes only when the extension's SQL interface or functionality changes. Release versions track all software updates, including documentation, build improvements, and dependency updates.
+**Important**: As of v1.0.6, extension versions are synchronized with release versions. This means:
+- Release v1.0.6 = Extension 1.0.6
+- Release v1.1.0 = Extension 1.1.0  
+- etc.
+
+The extension version changes when the SQL interface or functionality changes. Release versions track all software updates, and we maintain 1:1 alignment for clarity.
 
 ### Current Structure
 
 ```
-pg_cel.control              # Main control file (default_version = '1.0.0')
+pg_cel.control              # Main control file (default_version = '1.0.6')
 pg_cel--1.0.0.sql          # Base installation script for version 1.0.0
-pg_cel--1.0.0--1.1.0.sql   # Upgrade script from 1.0.0 to 1.1.0 (created when needed)
+pg_cel--1.0.6.sql          # Current version installation script
+pg_cel--1.0.0--1.0.6.sql   # Upgrade script from 1.0.0 to 1.0.6
+pg_cel--1.0.6--1.1.0.sql   # Future upgrade script (created when needed)
 ```
 
 ## Version Management

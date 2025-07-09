@@ -1,5 +1,5 @@
 EXTENSION = pg_cel
-DATA = pg_cel--1.0.0.sql
+DATA = pg_cel--1.0.0.sql pg_cel--1.0.0--1.0.6.sql pg_cel--1.0.6.sql
 MODULE_big = pg_cel
 OBJS = pg_wrapper.o
 

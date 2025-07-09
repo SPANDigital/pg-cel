@@ -178,14 +178,8 @@ package_extension() {
     cp pg_cel.* dist/$PACKAGE_NAME/ 2>/dev/null || true
     cp pg_cel_go.h dist/$PACKAGE_NAME/ 2>/dev/null || true
     
-    # Copy the correct version SQL file
-    SQL_FILE="pg_cel--${VERSION}.sql"
-    if [ -f "$SQL_FILE" ]; then
-        cp "$SQL_FILE" dist/$PACKAGE_NAME/
-    else
-        # Fallback to any pg_cel SQL file
-        cp pg_cel--*.sql dist/$PACKAGE_NAME/ 2>/dev/null || true
-    fi
+    # Always copy the standard SQL file
+    cp pg_cel--1.0.sql dist/$PACKAGE_NAME/ 2>/dev/null || true
 
     # Create archive
     cd dist

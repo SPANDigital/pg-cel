@@ -22,18 +22,7 @@ if [ -f "pg_cel.control" ]; then
     echo "✓ Updated pg_cel.control"
 fi
 
-# Handle SQL file versioning
-OLD_SQL_FILE=$(ls pg_cel--*.sql 2>/dev/null | head -1)
-NEW_SQL_FILE="pg_cel--$VERSION.sql"
-
-if [ -n "$OLD_SQL_FILE" ] && [ "$OLD_SQL_FILE" != "$NEW_SQL_FILE" ]; then
-    if [ -f "$OLD_SQL_FILE" ]; then
-        cp "$OLD_SQL_FILE" "$NEW_SQL_FILE"
-        echo "✓ Created $NEW_SQL_FILE"
-    fi
-fi
-
 echo "Extension version updated to $VERSION"
 echo "Files updated:"
 echo "  - pg_cel.control (default_version = '$VERSION')"
-echo "  - $NEW_SQL_FILE"
+echo "  - pg_cel--1.0.sql (unchanged - standard SQL file)"

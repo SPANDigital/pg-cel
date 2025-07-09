@@ -89,13 +89,8 @@ jobs:
         # On Linux, the extension creates a .so file
         cp pg_cel.so dist/linux-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel.so not found"
         
-        # Copy the correct version SQL file
-        SQL_FILE="pg_cel--${VERSION}.sql"
-        if [ -f "$SQL_FILE" ]; then
-          cp "$SQL_FILE" dist/linux-pg${{ matrix.pg_version }}/
-        else
-          cp pg_cel--*.sql dist/linux-pg${{ matrix.pg_version }}/ || echo "Warning: No SQL files found"
-        fi
+        # Always copy the standard SQL file
+        cp pg_cel--1.0.sql dist/linux-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel--1.0.sql not found"
         
         cp pg_cel.control dist/linux-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel.control not found"
         cp README.md dist/linux-pg${{ matrix.pg_version }}/ || echo "Warning: README.md not found"
@@ -197,13 +192,8 @@ jobs:
           echo "Warning: No extension binary found"
         fi
         
-        # Copy the correct version SQL file
-        SQL_FILE="pg_cel--${VERSION}.sql"
-        if [ -f "$SQL_FILE" ]; then
-          cp "$SQL_FILE" dist/macos-pg${{ matrix.pg_version }}/
-        else
-          cp pg_cel--*.sql dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: No SQL files found"
-        fi
+        # Always copy the standard SQL file
+        cp pg_cel--1.0.sql dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel--1.0.sql not found"
         
         cp pg_cel.control dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel.control not found"
         cp README.md dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: README.md not found"

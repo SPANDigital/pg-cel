@@ -66,20 +66,11 @@ if git rev-parse "$TAG" >/dev/null 2>&1; then
 fi
 
 # Update version in relevant files
-log "Updating version in files..."
+log "Updating version references in documentation..."
 
-# Update pg_cel.control
-if [ -f "pg_cel.control" ]; then
-    if grep -q "default_version" pg_cel.control; then
-        sed -i.bak "s/default_version = .*/default_version = '$VERSION'/" pg_cel.control
-        rm pg_cel.control.bak
-        log "Updated version in pg_cel.control to $VERSION"
-    fi
-fi
-
-# Update README.md installation instructions if needed
+# Update README.md and other docs if needed, but keep extension files unchanged
 if [ -f "README.md" ]; then
-    log "Version updated in pg_cel.control - README.md already uses pg_cel--1.0.sql"
+    log "Release $VERSION created - extension files remain at version 1.0"
 fi
 
 # Run tests to make sure everything works

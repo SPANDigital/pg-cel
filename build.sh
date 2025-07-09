@@ -168,7 +168,6 @@ clean_build() {
 package_extension() {
     log "Packaging extension..."
 
-    VERSION=$(get_extension_version)
     PG_VERSION=$(pg_config --version | sed 's/PostgreSQL \([0-9]*\).*/\1/')
     PACKAGE_NAME="pg-cel-${PLATFORM,,}-pg${PG_VERSION}"
     
@@ -186,7 +185,7 @@ package_extension() {
     tar -czf $PACKAGE_NAME.tar.gz $PACKAGE_NAME
     cd ..
 
-    log "Package created: dist/$PACKAGE_NAME.tar.gz (Extension v$VERSION, PostgreSQL $PG_VERSION)"
+    log "Package created: dist/$PACKAGE_NAME.tar.gz (PostgreSQL $PG_VERSION)"
 }
 
 # Get extension version from pg_cel.control

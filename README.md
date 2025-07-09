@@ -243,8 +243,8 @@ This will:
 
 ### Build Status
 
-![CI](https://github.com/your-username/pg-cel/workflows/CI/badge.svg)
-![Build and Release](https://github.com/your-username/pg-cel/workflows/Build%20and%20Release/badge.svg)
+![CI](https://github.com/SPANDigital/pg-cel/workflows/CI/badge.svg)
+![Build and Release](https://github.com/SPANDigital/pg-cel/workflows/Build%20and%20Release/badge.svg)
 
 ## Building
 

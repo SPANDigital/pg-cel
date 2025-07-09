@@ -41,7 +41,8 @@ EXCEPTION
     WHEN OTHERS THEN
         RETURN false;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STRICT IMMUTABLE
+SET search_path = pg_catalog, pg_temp;
 
 -- Overloaded version for JSONB input
 CREATE OR REPLACE FUNCTION cel_eval_bool(expression text, json_data jsonb)
@@ -53,7 +54,8 @@ EXCEPTION
     WHEN OTHERS THEN
         RETURN false;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STRICT IMMUTABLE
+SET search_path = pg_catalog, pg_temp;
 
 -- Convenience function for numeric results
 CREATE OR REPLACE FUNCTION cel_eval_numeric(expression text, json_data text DEFAULT '{}')
@@ -65,7 +67,8 @@ EXCEPTION
     WHEN OTHERS THEN
         RETURN NULL;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STRICT IMMUTABLE
+SET search_path = pg_catalog, pg_temp;
 
 -- Overloaded version for JSONB input
 CREATE OR REPLACE FUNCTION cel_eval_numeric(expression text, json_data jsonb)
@@ -77,7 +80,8 @@ EXCEPTION
     WHEN OTHERS THEN
         RETURN NULL;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STRICT IMMUTABLE
+SET search_path = pg_catalog, pg_temp;
 
 -- Convenience function for string results
 CREATE OR REPLACE FUNCTION cel_eval_string(expression text, json_data text DEFAULT '{}')
@@ -89,7 +93,8 @@ EXCEPTION
     WHEN OTHERS THEN
         RETURN NULL;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STRICT IMMUTABLE
+SET search_path = pg_catalog, pg_temp;
 
 -- Overloaded version for JSONB input
 CREATE OR REPLACE FUNCTION cel_eval_string(expression text, json_data jsonb)
@@ -101,4 +106,5 @@ EXCEPTION
     WHEN OTHERS THEN
         RETURN NULL;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STRICT IMMUTABLE
+SET search_path = pg_catalog, pg_temp;

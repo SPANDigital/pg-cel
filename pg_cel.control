@@ -1,5 +1,5 @@
 comment = 'PostgreSQL extension for CEL (Common Expression Language) evaluation'
-default_version = '1.0'
+default_version = '1.0.6'
 module_pathname = '$libdir/pg_cel'
 relocatable = true
 requires = ''

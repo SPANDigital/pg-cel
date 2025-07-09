@@ -68,18 +68,47 @@ fi
 # Update version in relevant files
 log "Updating version in files..."
 
-# Update pg_cel.control if it has a version field
+# Update pg_cel.control
 if [ -f "pg_cel.control" ]; then
     if grep -q "default_version" pg_cel.control; then
         sed -i.bak "s/default_version = .*/default_version = '$VERSION'/" pg_cel.control
         rm pg_cel.control.bak
-        log "Updated version in pg_cel.control"
+        log "Updated version in pg_cel.control to $VERSION"
     fi
 fi
 
-# Update README.md if it mentions version
-if [ -f "README.md" ] && grep -q "Version" README.md; then
-    log "Please manually update version references in README.md if needed"
+# Handle SQL file versioning
+OLD_SQL_FILE=$(ls pg_cel--*.sql 2>/dev/null | head -1)
+NEW_SQL_FILE="pg_cel--$VERSION.sql"
+
+if [ -n "$OLD_SQL_FILE" ] && [ "$OLD_SQL_FILE" != "$NEW_SQL_FILE" ]; then
+    if [ -f "$OLD_SQL_FILE" ]; then
+        cp "$OLD_SQL_FILE" "$NEW_SQL_FILE"
+        log "Created new SQL file: $NEW_SQL_FILE"
+        
+        # Create upgrade script from old version to new version if there's a difference
+        OLD_VERSION=$(echo "$OLD_SQL_FILE" | sed 's/pg_cel--\(.*\)\.sql/\1/')
+        if [ "$OLD_VERSION" != "$VERSION" ] && [ "$OLD_VERSION" != "1.0" ]; then
+            UPGRADE_FILE="pg_cel--$OLD_VERSION--$VERSION.sql"
+            echo "-- Upgrade script from $OLD_VERSION to $VERSION" > "$UPGRADE_FILE"
+            echo "-- No schema changes required for this upgrade" >> "$UPGRADE_FILE"
+            log "Created upgrade script: $UPGRADE_FILE"
+        fi
+    fi
+elif [ ! -f "$NEW_SQL_FILE" ]; then
+    # If no existing SQL file, create from pg_cel--1.0.sql template
+    if [ -f "pg_cel--1.0.sql" ]; then
+        cp "pg_cel--1.0.sql" "$NEW_SQL_FILE"
+        log "Created SQL file: $NEW_SQL_FILE from template"
+    fi
+fi
+
+# Update README.md installation instructions
+if [ -f "README.md" ]; then
+    # Update the installation instructions to reference the new version
+    sed -i.bak "s/pg_cel--[0-9.]*\.sql/pg_cel--$VERSION.sql/g" README.md
+    rm README.md.bak 2>/dev/null || true
+    log "Updated README.md installation instructions"
 fi
 
 # Run tests to make sure everything works

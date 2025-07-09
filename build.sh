@@ -168,19 +168,44 @@ clean_build() {
 package_extension() {
     log "Packaging extension..."
 
-    PACKAGE_NAME="pg-cel-$PLATFORM-$(date +%Y%m%d)"
+    VERSION=$(get_extension_version)
+    PG_VERSION=$(pg_config --version | sed 's/PostgreSQL \([0-9]*\).*/\1/')
+    PACKAGE_NAME="pg-cel-${PLATFORM,,}-pg${PG_VERSION}"
+    
     mkdir -p dist/$PACKAGE_NAME
 
     # Copy built files
     cp pg_cel.* dist/$PACKAGE_NAME/ 2>/dev/null || true
     cp pg_cel_go.h dist/$PACKAGE_NAME/ 2>/dev/null || true
+    
+    # Copy the correct version SQL file
+    SQL_FILE="pg_cel--${VERSION}.sql"
+    if [ -f "$SQL_FILE" ]; then
+        cp "$SQL_FILE" dist/$PACKAGE_NAME/
+    else
+        # Fallback to any pg_cel SQL file
+        cp pg_cel--*.sql dist/$PACKAGE_NAME/ 2>/dev/null || true
+    fi
 
     # Create archive
     cd dist
     tar -czf $PACKAGE_NAME.tar.gz $PACKAGE_NAME
     cd ..
 
-    log "Package created: dist/$PACKAGE_NAME.tar.gz"
+    log "Package created: dist/$PACKAGE_NAME.tar.gz (Extension v$VERSION, PostgreSQL $PG_VERSION)"
+}
+
+# Get extension version from pg_cel.control
+get_extension_version() {
+    if [ -f "pg_cel.control" ]; then
+        VERSION=$(grep "default_version" pg_cel.control | sed "s/default_version = '\(.*\)'/\1/" | tr -d "'" | tr -d ' ')
+        if [ -z "$VERSION" ]; then
+            VERSION="1.0"
+        fi
+    else
+        VERSION="1.0"
+    fi
+    echo "$VERSION"
 }
 
 # Main script logic

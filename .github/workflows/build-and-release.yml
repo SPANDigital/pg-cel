@@ -48,6 +48,16 @@ jobs:
     - name: Download Go dependencies
       run: go mod download
       
+    - name: Get extension version
+      id: get_version
+      run: |
+        VERSION=$(grep "default_version" pg_cel.control | sed "s/default_version = '\(.*\)'/\1/" | tr -d "'" | tr -d ' ')
+        if [ -z "$VERSION" ]; then
+          VERSION="1.0"
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Extension version: $VERSION"
+      
     - name: Build extension
       run: |
         chmod +x build.sh
@@ -74,10 +84,19 @@ jobs:
         
     - name: Package artifacts
       run: |
+        VERSION="${{ steps.get_version.outputs.version }}"
         mkdir -p dist/linux-pg${{ matrix.pg_version }}
         # On Linux, the extension creates a .so file
         cp pg_cel.so dist/linux-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel.so not found"
-        cp pg_cel--1.0.sql dist/linux-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel--1.0.sql not found"
+        
+        # Copy the correct version SQL file
+        SQL_FILE="pg_cel--${VERSION}.sql"
+        if [ -f "$SQL_FILE" ]; then
+          cp "$SQL_FILE" dist/linux-pg${{ matrix.pg_version }}/
+        else
+          cp pg_cel--*.sql dist/linux-pg${{ matrix.pg_version }}/ || echo "Warning: No SQL files found"
+        fi
+        
         cp pg_cel.control dist/linux-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel.control not found"
         cp README.md dist/linux-pg${{ matrix.pg_version }}/ || echo "Warning: README.md not found"
         cp LICENSE dist/linux-pg${{ matrix.pg_version }}/ || echo "Warning: LICENSE not found"
@@ -126,6 +145,16 @@ jobs:
     - name: Download Go dependencies
       run: go mod download
       
+    - name: Get extension version
+      id: get_version
+      run: |
+        VERSION=$(grep "default_version" pg_cel.control | sed "s/default_version = '\(.*\)'/\1/" | tr -d "'" | tr -d ' ')
+        if [ -z "$VERSION" ]; then
+          VERSION="1.0"
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Extension version: $VERSION"
+      
     - name: Build extension
       run: |
         chmod +x build.sh
@@ -157,6 +186,7 @@ jobs:
         
     - name: Package artifacts
       run: |
+        VERSION="${{ steps.get_version.outputs.version }}"
         mkdir -p dist/macos-pg${{ matrix.pg_version }}
         # On macOS, the extension can create either a .dylib or .so file
         if [ -f pg_cel.dylib ]; then
@@ -166,7 +196,15 @@ jobs:
         else
           echo "Warning: No extension binary found"
         fi
-        cp pg_cel--1.0.sql dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel--1.0.sql not found"
+        
+        # Copy the correct version SQL file
+        SQL_FILE="pg_cel--${VERSION}.sql"
+        if [ -f "$SQL_FILE" ]; then
+          cp "$SQL_FILE" dist/macos-pg${{ matrix.pg_version }}/
+        else
+          cp pg_cel--*.sql dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: No SQL files found"
+        fi
+        
         cp pg_cel.control dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: pg_cel.control not found"
         cp README.md dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: README.md not found"
         cp LICENSE dist/macos-pg${{ matrix.pg_version }}/ || echo "Warning: LICENSE not found"

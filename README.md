@@ -42,12 +42,12 @@ For pre-built binaries, please download from the [GitHub Releases](https://githu
    # For Linux
    sudo cp pg_cel.so $(pg_config --pkglibdir)/
    sudo cp pg_cel.control $(pg_config --sharedir)/extension/
-   sudo cp pg_cel--1.0.sql $(pg_config --sharedir)/extension/
+   sudo cp pg_cel--*.sql $(pg_config --sharedir)/extension/
    
    # For macOS
    sudo cp pg_cel.dylib $(pg_config --pkglibdir)/
    sudo cp pg_cel.control $(pg_config --sharedir)/extension/
-   sudo cp pg_cel--1.0.sql $(pg_config --sharedir)/extension/
+   sudo cp pg_cel--*.sql $(pg_config --sharedir)/extension/
    ```
 4. In PostgreSQL: `CREATE EXTENSION pg_cel;`
 

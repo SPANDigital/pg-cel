@@ -1,6 +1,8 @@
 module pg-cel
 
-go 1.22
+go 1.22.0
+
+toolchain go1.24.3
 
 require (
 	github.com/dgraph-io/ristretto v0.2.0

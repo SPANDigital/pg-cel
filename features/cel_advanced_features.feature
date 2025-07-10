@@ -168,11 +168,11 @@ Feature: Advanced CEL Features
     And the result type should be "<type>"
 
     Examples:
-      | expression           | expected | type    |
-      | math.abs(-42)       | 42       | integer |
-      | math.max([1,5,3])   | 5        | integer |
-      | math.min([1,5,3])   | 1        | integer |
-      | size("unicode: 🔥") | 10       | integer |
+      | expression             | expected | type    |
+      | math.abs(-42)         | 42       | integer |
+      | math.greatest([1,5,3]) | 5        | integer |
+      | math.least([1,5,3])   | 1        | integer |
+      | size("unicode: 🔥")   | 10       | integer |
 
   @performance
   Scenario: Large list processing performance

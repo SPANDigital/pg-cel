@@ -74,6 +74,8 @@ func createCELEnv() (*cel.Env, error) {
 		ext.Protos(),
 		ext.Encoders(),
 		ext.Sets(),
+		// Enable optional types extension for some advanced functions
+		cel.OptionalTypes(),
 	)
 }
 
@@ -356,30 +358,26 @@ func pg_cel_cache_stats() *C.char {
 	if programCache != nil {
 		programMetrics := programCache.Metrics
 		stats = map[string]any{
-			"program_cache": map[string]any{
-				"hits":          programMetrics.Hits(),
-				"misses":        programMetrics.Misses(),
-				"cost_added":    programMetrics.CostAdded(),
-				"cost_evicted":  programMetrics.CostEvicted(),
-				"sets_dropped":  programMetrics.SetsDropped(),
-				"sets_rejected": programMetrics.SetsRejected(),
-				"gets_kept":     programMetrics.GetsKept(),
-				"gets_dropped":  programMetrics.GetsDropped(),
-			},
+			"program_hits":          programMetrics.Hits(),
+			"program_misses":        programMetrics.Misses(),
+			"program_cost_added":    programMetrics.CostAdded(),
+			"program_cost_evicted":  programMetrics.CostEvicted(),
+			"program_sets_dropped":  programMetrics.SetsDropped(),
+			"program_sets_rejected": programMetrics.SetsRejected(),
+			"program_gets_kept":     programMetrics.GetsKept(),
+			"program_gets_dropped":  programMetrics.GetsDropped(),
 		}
 
 		if jsonCache != nil {
 			jsonMetrics := jsonCache.Metrics
-			stats["json_cache"] = map[string]any{
-				"hits":          jsonMetrics.Hits(),
-				"misses":        jsonMetrics.Misses(),
-				"cost_added":    jsonMetrics.CostAdded(),
-				"cost_evicted":  jsonMetrics.CostEvicted(),
-				"sets_dropped":  jsonMetrics.SetsDropped(),
-				"sets_rejected": jsonMetrics.SetsRejected(),
-				"gets_kept":     jsonMetrics.GetsKept(),
-				"gets_dropped":  jsonMetrics.GetsDropped(),
-			}
+			stats["json_hits"] = jsonMetrics.Hits()
+			stats["json_misses"] = jsonMetrics.Misses()
+			stats["json_cost_added"] = jsonMetrics.CostAdded()
+			stats["json_cost_evicted"] = jsonMetrics.CostEvicted()
+			stats["json_sets_dropped"] = jsonMetrics.SetsDropped()
+			stats["json_sets_rejected"] = jsonMetrics.SetsRejected()
+			stats["json_gets_kept"] = jsonMetrics.GetsKept()
+			stats["json_gets_dropped"] = jsonMetrics.GetsDropped()
 		}
 	}
 

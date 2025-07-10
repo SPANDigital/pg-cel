@@ -108,3 +108,61 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql STRICT IMMUTABLE
 SET search_path = pg_catalog, pg_temp;
+
+-- Convenience function for integer results
+CREATE OR REPLACE FUNCTION cel_eval_int(expression text, json_data text DEFAULT '{}')
+RETURNS integer
+AS $$
+BEGIN
+    RETURN cel_eval_json(expression, json_data)::integer;
+END;
+$$ LANGUAGE plpgsql STRICT IMMUTABLE
+SET search_path = pg_catalog, pg_temp;
+
+-- Overloaded version for JSONB input
+CREATE OR REPLACE FUNCTION cel_eval_int(expression text, json_data jsonb)
+RETURNS integer
+AS $$
+BEGIN
+    RETURN (cel_eval_json(expression, json_data::text))::integer;
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN NULL;
+END;
+$$ LANGUAGE plpgsql STRICT IMMUTABLE
+SET search_path = pg_catalog, pg_temp;
+
+-- Convenience function for double precision results
+CREATE OR REPLACE FUNCTION cel_eval_double(expression text, json_data text DEFAULT '{}')
+RETURNS double precision
+AS $$
+BEGIN
+    RETURN (cel_eval_json(expression, json_data))::double precision;
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN NULL;
+END;
+$$ LANGUAGE plpgsql STRICT IMMUTABLE
+SET search_path = pg_catalog, pg_temp;
+
+-- Overloaded version for JSONB input
+CREATE OR REPLACE FUNCTION cel_eval_double(expression text, json_data jsonb)
+RETURNS double precision
+AS $$
+BEGIN
+    RETURN (cel_eval_json(expression, json_data::text))::double precision;
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN NULL;
+END;
+$$ LANGUAGE plpgsql STRICT IMMUTABLE
+SET search_path = pg_catalog, pg_temp;
+
+-- Test function for debugging
+CREATE OR REPLACE FUNCTION test_int_cast(input text)
+RETURNS integer
+AS $$
+BEGIN
+    RETURN input::integer;
+END;
+$$ LANGUAGE plpgsql;

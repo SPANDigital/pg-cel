@@ -50,9 +50,16 @@ func pg_init_caches(programCacheMB int, jsonCacheMB int) {
 }
 
 func init() {
-	// Default initialization for standalone usage
-	// In PostgreSQL, pg_init_caches will be called with configured values
-	pg_init_caches(128, 64) // 128MB program cache, 64MB JSON cache (halved from 256MB/128MB)
+	// Default initialization removed to avoid duplicate cache initialization
+	// In PostgreSQL, pg_init_caches will be called with configured GUC values
+	// For standalone usage, caches will be initialized on first use or manually
+}
+
+// ensureCachesInitialized ensures caches are initialized with default values if not already done
+func ensureCachesInitialized() {
+	if programCache == nil || jsonCache == nil {
+		pg_init_caches(128, 64) // Default fallback values
+	}
 }
 
 // Create a CEL environment with common extensions
@@ -71,6 +78,9 @@ func createCELEnv() (*cel.Env, error) {
 
 //export pg_cel_eval
 func pg_cel_eval(expressionStr *C.char, dataStr *C.char) *C.char {
+	// Ensure caches are initialized
+	ensureCachesInitialized()
+	
 	// Convert C strings to Go strings
 	exprString := C.GoString(expressionStr)
 	dataString := C.GoString(dataStr)
@@ -150,6 +160,9 @@ func pg_cel_eval(expressionStr *C.char, dataStr *C.char) *C.char {
 
 //export pg_cel_eval_json
 func pg_cel_eval_json(expressionStr *C.char, jsonData *C.char) *C.char {
+	// Ensure caches are initialized
+	ensureCachesInitialized()
+	
 	// Convert C strings to Go strings
 	exprString := C.GoString(expressionStr)
 	jsonString := C.GoString(jsonData)

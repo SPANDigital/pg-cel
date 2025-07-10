@@ -1,0 +1,54 @@
+---
+labels: ["general"]
+---
+
+<!-- 
+Use this template for general discussions about pg-cel,
+sharing use cases, best practices, or community topics.
+-->
+
+## Discussion Topic
+<!-- What would you like to discuss? -->
+
+## Context
+<!-- Provide background or context for the discussion -->
+
+## Current Situation
+<!-- Describe the current state or situation -->
+
+## Questions
+<!-- What specific questions do you have? -->
+
+## Use Case
+<!-- If applicable, describe your use case -->
+
+## Examples
+<!-- Provide any relevant examples, code snippets, or configurations -->
+
+```sql
+-- Example SQL or CEL expressions
+SELECT cel_eval('your_expression_here', '{"data": "example"}');
+```
+
+## Community Input
+<!-- What kind of input or feedback are you looking for? -->
+- [ ] Best practices advice
+- [ ] Implementation suggestions
+- [ ] Performance optimization tips
+- [ ] Alternative approaches
+- [ ] Community experiences
+- [ ] Other: _______________
+
+## Environment
+<!-- If relevant, provide environment details -->
+- PostgreSQL Version: 
+- pg-cel Version: 
+- Operating System: 
+- Use Case Category: 
+
+---
+<!-- 
+For specific support questions, please use the Question/Support issue template.
+For bugs, please use the Bug Report issue template.
+For feature requests, please use the Feature Request issue template.
+-->

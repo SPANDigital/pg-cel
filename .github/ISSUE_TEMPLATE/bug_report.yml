@@ -1,0 +1,126 @@
+name: Bug Report
+description: Report a bug in pg-cel
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out this form as completely as possible to help us understand and reproduce the issue.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm the following before submitting this issue
+      options:
+        - label: I have searched existing issues to ensure this bug hasn't already been reported
+          required: true
+        - label: I have read the [TROUBLESHOOTING.md](../blob/main/TROUBLESHOOTING.md) guide
+          required: true
+        - label: I have tested with the latest version of pg-cel
+          required: true
+
+  - type: dropdown
+    id: postgresql-version
+    attributes:
+      label: PostgreSQL Version
+      description: Which PostgreSQL version are you using?
+      options:
+        - PostgreSQL 14
+        - PostgreSQL 15  
+        - PostgreSQL 16
+        - PostgreSQL 17
+        - Other (please specify in description)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating System
+      description: Which operating system are you using?
+      options:
+        - Linux (Ubuntu/Debian)
+        - Linux (RHEL/CentOS/Fedora)
+        - Linux (Other)
+        - macOS (Intel)
+        - macOS (Apple Silicon)
+        - Windows (WSL)
+        - Other (please specify in description)
+    validations:
+      required: true
+
+  - type: input
+    id: pg-cel-version
+    attributes:
+      label: pg-cel Version
+      description: Which version of pg-cel are you using? (run `SELECT cel_eval('1')`; to verify installation)
+      placeholder: "e.g., 1.4.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: Describe what happened vs what you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Steps to Reproduce
+      description: Detailed steps to reproduce the behavior
+      placeholder: |
+        1. Install pg-cel...
+        2. Run SQL query...
+        3. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: cel-expression
+    attributes:
+      label: CEL Expression
+      description: The CEL expression that's causing issues (if applicable)
+      placeholder: |
+        SELECT cel_eval('your expression here', 'your data here');
+      render: sql
+
+  - type: textarea
+    id: error-output
+    attributes:
+      label: Error Output
+      description: Full error message or unexpected output
+      placeholder: Paste the complete error message here
+      render: text
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen
+      placeholder: Describe the expected behavior
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here
+      placeholder: |
+        - Database configuration details
+        - Other extensions installed
+        - Any relevant logs
+        - Screenshots (if applicable)
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Would you like to contribute to fixing this issue?
+      options:
+        - label: I'd be willing to submit a PR to fix this issue

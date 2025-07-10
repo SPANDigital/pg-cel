@@ -1,0 +1,49 @@
+---
+labels: ["announcements"]
+---
+
+<!-- 
+Use this template for project announcements, release notes, 
+and important updates about pg-cel.
+-->
+
+## Announcement Type
+<!-- Select the type of announcement -->
+- [ ] Release announcement
+- [ ] Feature announcement
+- [ ] Community update
+- [ ] Breaking change notification
+- [ ] Security update
+- [ ] Deprecation notice
+
+## Summary
+<!-- Brief summary of the announcement -->
+
+## Details
+<!-- Detailed information about the announcement -->
+
+## Impact
+<!-- Who or what is affected by this announcement -->
+
+## Action Required
+<!-- Any actions users need to take -->
+- [ ] No action required
+- [ ] Update recommended
+- [ ] Update required
+- [ ] Migration needed
+
+## Timeline
+<!-- Important dates or deadlines -->
+
+## Resources
+<!-- Links to relevant documentation, issues, or PRs -->
+
+## Questions?
+<!-- How people can ask questions or get help -->
+
+---
+<!-- 
+For support questions, please use the Question/Support issue template instead.
+For bugs, please use the Bug Report issue template.
+For feature requests, please use the Feature Request issue template.
+-->

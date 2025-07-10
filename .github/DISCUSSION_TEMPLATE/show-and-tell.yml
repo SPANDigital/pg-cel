@@ -1,0 +1,80 @@
+---
+labels: ["show-and-tell"]
+---
+
+<!-- 
+Use this template to share how you're using pg-cel,
+showcase interesting implementations, or share success stories.
+-->
+
+## What Are You Sharing?
+<!-- Select what you're sharing -->
+- [ ] Use case or implementation
+- [ ] Performance results
+- [ ] Integration example
+- [ ] Success story
+- [ ] Interesting CEL expressions
+- [ ] Troubleshooting solution
+- [ ] Best practices
+- [ ] Other: _______________
+
+## Project/Use Case Overview
+<!-- Describe your project or use case -->
+
+## How You're Using pg-cel
+<!-- Explain how pg-cel fits into your solution -->
+
+## Technical Details
+<!-- Share relevant technical information -->
+
+### Environment
+- PostgreSQL Version: 
+- pg-cel Version: 
+- Operating System: 
+- Application Stack: 
+
+### Key CEL Expressions or Patterns
+```sql
+-- Share interesting or useful CEL expressions
+SELECT cel_eval('your_expression', '{"your": "data"}');
+```
+
+### Performance Characteristics
+<!-- If relevant, share performance information -->
+- Query volume: 
+- Response times: 
+- Cache hit rates: 
+- Other metrics: 
+
+## Challenges and Solutions
+<!-- Any challenges you faced and how you solved them -->
+
+## Results and Benefits
+<!-- What benefits or results have you achieved? -->
+
+## Lessons Learned
+<!-- What did you learn that might help others? -->
+
+## Code or Examples
+<!-- Share code snippets, configurations, or examples -->
+
+```sql
+-- Example queries or schemas
+CREATE TABLE your_table (...);
+SELECT cel_eval('...', '...') FROM your_table;
+```
+
+## Resources or References
+<!-- Links to related projects, documentation, or articles -->
+
+## Questions for the Community
+<!-- Any questions you have for other users -->
+
+## Advice for Others
+<!-- What advice would you give to others with similar use cases? -->
+
+---
+<!-- 
+Thanks for sharing with the pg-cel community! 
+Your experiences help others learn and contribute to the project's success.
+-->

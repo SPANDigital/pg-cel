@@ -44,12 +44,18 @@ jobs:
 
     - name: Install PostgreSQL client and dev packages
       run: |
+        # Add PostgreSQL official APT repository
+        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+        echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
         sudo apt-get update
         sudo apt-get install -y postgresql-client postgresql-server-dev-${{ matrix.postgres-version }}
 
     - name: Set PG_CONFIG environment
       run: |
         echo "PG_CONFIG=/usr/lib/postgresql/${{ matrix.postgres-version }}/bin/pg_config" >> $GITHUB_ENV
+        # Verify pg_config is available
+        ls -la /usr/lib/postgresql/${{ matrix.postgres-version }}/bin/pg_config
+        /usr/lib/postgresql/${{ matrix.postgres-version }}/bin/pg_config --version
 
     - name: Install Go dependencies
       run: go mod download
@@ -57,6 +63,9 @@ jobs:
     - name: Build pg-cel extension
       run: |
         export PG_CONFIG=/usr/lib/postgresql/${{ matrix.postgres-version }}/bin/pg_config
+        echo "Building with PostgreSQL version: ${{ matrix.postgres-version }}"
+        echo "PG_CONFIG path: $PG_CONFIG"
+        echo "Go version: $(go version)"
         ./build.sh
 
     - name: Install pg-cel extension
@@ -73,17 +82,21 @@ jobs:
         TEST_DB: test_pgcel
       run: |
         # Wait for PostgreSQL to be ready
+        echo "Waiting for PostgreSQL ${{ matrix.postgres-version }} to be ready..."
         until pg_isready -h localhost -p 5432 -U postgres; do
-          echo "Waiting for PostgreSQL..."
+          echo "PostgreSQL not ready yet, waiting..."
           sleep 2
         done
         
+        echo "PostgreSQL is ready. Creating test database..."
         # Create test database
         createdb test_pgcel || echo "Database may already exist"
         
+        echo "Installing pg-cel extension..."
         # Enable pg-cel extension
         psql -d test_pgcel -c "CREATE EXTENSION IF NOT EXISTS pg_cel;"
         
+        echo "Verifying pg-cel extension works..."
         # Verify extension works
         psql -d test_pgcel -c "SELECT cel_eval('1 + 1') as test;"
 

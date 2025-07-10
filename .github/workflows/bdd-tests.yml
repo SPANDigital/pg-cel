@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         postgres-version: [14, 15, 16, 17]
-        go-version: [1.24]
+        go-version: ['1.23']
 
     services:
       postgres:
@@ -72,11 +72,17 @@ jobs:
         PGPASSWORD: postgres
         TEST_DB: test_pgcel
       run: |
+        # Wait for PostgreSQL to be ready
+        until pg_isready -h localhost -p 5432 -U postgres; do
+          echo "Waiting for PostgreSQL..."
+          sleep 2
+        done
+        
         # Create test database
-        createdb test_pgcel
+        createdb test_pgcel || echo "Database may already exist"
         
         # Enable pg-cel extension
-        psql -d test_pgcel -c "CREATE EXTENSION pg_cel;"
+        psql -d test_pgcel -c "CREATE EXTENSION IF NOT EXISTS pg_cel;"
         
         # Verify extension works
         psql -d test_pgcel -c "SELECT cel_eval('1 + 1') as test;"
@@ -88,6 +94,7 @@ jobs:
         PGUSER: postgres
         PGPASSWORD: postgres
         TEST_DB: test_pgcel
+        POSTGRES_USER: postgres
       run: |
         go test -v -godog.format=pretty ./godog_main_test.go ./godog_test.go
 
@@ -98,6 +105,7 @@ jobs:
         PGUSER: postgres
         PGPASSWORD: postgres
         TEST_DB: test_pgcel
+        POSTGRES_USER: postgres
       run: |
         go test -v -godog.format=junit:bdd-results.xml ./godog_main_test.go ./godog_test.go
 
@@ -115,6 +123,7 @@ jobs:
         PGUSER: postgres
         PGPASSWORD: postgres
         TEST_DB: test_pgcel
+        POSTGRES_USER: postgres
       run: |
         go test -v -coverprofile=bdd-coverage.out ./godog_main_test.go ./godog_test.go
 

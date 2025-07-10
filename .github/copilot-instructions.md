@@ -143,9 +143,15 @@ pg_cel.json_cache_size_mb = 128     # Default 64MB
 ### Environment Variables
 
 - `PG_CONFIG`: Path to pg_config binary
-- `GO_VERSION`: Go version for builds (default: 1.22)
+- `GO_VERSION`: Go version for builds (default: 1.24)
 
 ## Common Patterns
+
+### Modern Go Features
+
+- Use `any` instead of `interface{}` for Go 1.24+ compatibility
+- Leverage enhanced performance optimizations in Go 1.24
+- Follow modern Go conventions and best practices
 
 ### Adding a New CEL Extension
 

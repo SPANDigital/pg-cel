@@ -177,7 +177,7 @@ The extension uses two separate high-performance Ristretto caches:
 #### JSON Parsing Cache
 - **Purpose**: Cache parsed JSON objects
 - **Key**: Raw JSON string (e.g., `'{"age": 25, "verified": true}'`)
-- **Value**: Parsed map[string]interface{} object
+- **Value**: Parsed map[string]any object
 - **Benefit**: Eliminates expensive JSON parsing for repeated JSON structures
 
 ### Performance Characteristics

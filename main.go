@@ -90,14 +90,14 @@ func pg_cel_eval(expressionStr *C.char, dataStr *C.char) *C.char {
 		prg := cachedProgram.(cel.Program)
 
 		// Parse data as simple environment
-		var env map[string]interface{}
+		var env map[string]any
 		if dataString != "" {
-			env = map[string]interface{}{
+			env = map[string]any{
 				"data": dataString,
 				"len":  func(s string) int { return len(s) },
 			}
 		} else {
-			env = map[string]interface{}{}
+			env = map[string]any{}
 		}
 
 		// Execute the expression
@@ -136,14 +136,14 @@ func pg_cel_eval(expressionStr *C.char, dataStr *C.char) *C.char {
 	programCache.Set(exprString, prg, 1)
 
 	// Parse data as simple environment
-	var env map[string]interface{}
+	var env map[string]any
 	if dataString != "" {
-		env = map[string]interface{}{
+		env = map[string]any{
 			"data": dataString,
 			"len":  func(s string) int { return len(s) },
 		}
 	} else {
-		env = map[string]interface{}{}
+		env = map[string]any{}
 	}
 
 	// Execute the expression
@@ -198,14 +198,14 @@ func pg_cel_eval_json(expressionStr *C.char, jsonData *C.char) *C.char {
 	}
 
 	// Parse JSON data with caching
-	var env map[string]interface{}
+	var env map[string]any
 	if jsonString != "" && jsonString != "{}" {
 		// Try to get parsed JSON from cache
 		if cachedEnv, found := jsonCache.Get(jsonString); found {
-			env = cachedEnv.(map[string]interface{})
+			env = cachedEnv.(map[string]any)
 		} else {
 			// Parse JSON (cache miss)
-			env = make(map[string]interface{})
+			env = make(map[string]any)
 			err := json.Unmarshal([]byte(jsonString), &env)
 			if err != nil {
 				errorMsg := fmt.Sprintf("JSON parsing error: %v", err)
@@ -219,7 +219,7 @@ func pg_cel_eval_json(expressionStr *C.char, jsonData *C.char) *C.char {
 			jsonCache.Set(jsonString, env, cost)
 		}
 	} else {
-		env = map[string]interface{}{}
+		env = map[string]any{}
 	}
 
 	// Execute the expression
@@ -258,12 +258,12 @@ func pg_cel_compile_check(expressionStr *C.char) *C.char {
 
 //export pg_cel_cache_stats
 func pg_cel_cache_stats() *C.char {
-	var stats map[string]interface{}
+	var stats map[string]any
 
 	if programCache != nil {
 		programMetrics := programCache.Metrics
-		stats = map[string]interface{}{
-			"program_cache": map[string]interface{}{
+		stats = map[string]any{
+			"program_cache": map[string]any{
 				"hits":          programMetrics.Hits(),
 				"misses":        programMetrics.Misses(),
 				"cost_added":    programMetrics.CostAdded(),
@@ -277,7 +277,7 @@ func pg_cel_cache_stats() *C.char {
 
 		if jsonCache != nil {
 			jsonMetrics := jsonCache.Metrics
-			stats["json_cache"] = map[string]interface{}{
+			stats["json_cache"] = map[string]any{
 				"hits":          jsonMetrics.Hits(),
 				"misses":        jsonMetrics.Misses(),
 				"cost_added":    jsonMetrics.CostAdded(),

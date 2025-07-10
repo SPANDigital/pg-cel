@@ -195,7 +195,7 @@ func pg_cel_eval(expressionStr *C.char, dataStr *C.char) *C.char {
 		}
 
 		// Execute the expression
-		out, _, err := prg.Eval(env)
+		out, _, err := compiledProgram.Eval(env)
 		if err != nil {
 			errorMsg := fmt.Sprintf("CEL evaluation error: %v", err)
 			return C.CString(errorMsg)

@@ -7,7 +7,7 @@ on:
     branches: [ main ]
     paths:
       - 'features/**'
-      - 'godog_*.go'
+      - 'tests/**'
       - 'setup_bdd_tests.sh'
       - '.github/workflows/bdd-tests.yml'
 
@@ -286,25 +286,7 @@ jobs:
         }
         
         # Run the actual BDD tests
-        go test -v -godog.format=pretty ./godog_main_test.go ./godog_test.go
-
-    - name: Run BDD tests with JUnit output
-      env:
-        PGHOST: localhost
-        PGPORT: 5432
-        PGUSER: postgres
-        PGPASSWORD: postgres
-        TEST_DB: test_pgcel
-        POSTGRES_USER: postgres
-      run: |
-        go test -v -godog.format=junit:bdd-results.xml ./godog_main_test.go ./godog_test.go
-
-    - name: Upload BDD test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: bdd-test-results-pg${{ matrix.postgres-version }}
-        path: bdd-results.xml
+        cd tests && go test -v -run TestFeatures
 
     - name: Run BDD tests with coverage
       env:
@@ -315,7 +297,7 @@ jobs:
         TEST_DB: test_pgcel
         POSTGRES_USER: postgres
       run: |
-        go test -v -coverprofile=bdd-coverage.out ./godog_main_test.go ./godog_test.go
+        cd tests && go test -v -coverprofile=../bdd-coverage.out -run TestFeatures
 
     - name: Upload coverage reports
       uses: actions/upload-artifact@v4

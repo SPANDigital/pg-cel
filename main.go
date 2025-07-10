@@ -181,7 +181,7 @@ func pg_cel_eval(expressionStr *C.char, dataStr *C.char) *C.char {
 
 	// Try to get compiled program from cache
 	if cachedProgram, found := programCache.Get(exprString); found {
-		prg := cachedProgram
+		compiledProgram := cachedProgram
 
 		// Parse data as simple environment
 		var env map[string]any

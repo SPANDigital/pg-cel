@@ -76,19 +76,47 @@ jobs:
         echo "PostgreSQL version: $(pg_config --version)"
         echo "Library directory: $(pg_config --pkglibdir)"
         echo "Extension directory: $(pg_config --sharedir)/extension"
-        sudo make install
+        
+        # Verify the directories exist
+        sudo mkdir -p "$(pg_config --pkglibdir)"
+        sudo mkdir -p "$(pg_config --sharedir)/extension"
+        
+        # Install with explicit PG_CONFIG
+        sudo PG_CONFIG="/usr/lib/postgresql/${{ matrix.pg_version }}/bin/pg_config" PATH="/usr/lib/postgresql/${{ matrix.pg_version }}/bin:$PATH" make install
+        
+        # Verify installation
+        echo "Verifying installation..."
+        ls -la "$(pg_config --pkglibdir)/pg_cel.so" || echo "WARNING: pg_cel.so not found in expected location"
+        ls -la "$(pg_config --sharedir)/extension/pg_cel.control" || echo "WARNING: pg_cel.control not found in expected location"
+        ls -la "$(pg_config --sharedir)/extension/pg_cel--*.sql" || echo "WARNING: SQL files not found in expected location"
         
     - name: Test build
       run: |
         # Stop default PostgreSQL service and start the correct version
-        sudo systemctl stop postgresql
-        sudo systemctl start postgresql@${{ matrix.pg_version }}-main
-        sudo systemctl status postgresql@${{ matrix.pg_version }}-main
+        sudo systemctl stop postgresql || true
+        sleep 2
         
-        # Create test database with the correct PostgreSQL version
-        sudo -u postgres /usr/lib/postgresql/${{ matrix.pg_version }}/bin/createdb test_db
-        sudo -u postgres /usr/lib/postgresql/${{ matrix.pg_version }}/bin/psql -d test_db -c "CREATE EXTENSION pg_cel;"
-        sudo -u postgres /usr/lib/postgresql/${{ matrix.pg_version }}/bin/psql -d test_db -c "SELECT cel_eval('2 + 3');"
+        # Try different service names for the specific PostgreSQL version
+        if sudo systemctl start postgresql@${{ matrix.pg_version }}-main; then
+          echo "Started postgresql@${{ matrix.pg_version }}-main"
+          sleep 3
+        elif sudo systemctl start postgresql; then
+          echo "Started default postgresql service"
+          sleep 3
+        else
+          echo "Failed to start PostgreSQL service"
+          exit 1
+        fi
+        
+        # Set up proper environment for the specific PostgreSQL version
+        export PATH="/usr/lib/postgresql/${{ matrix.pg_version }}/bin:$PATH"
+        
+        # Wait for PostgreSQL to be ready and create test database
+        sudo -u postgres createdb test_db
+        
+        # Test the extension
+        sudo -u postgres psql -d test_db -c "CREATE EXTENSION pg_cel;"
+        sudo -u postgres psql -d test_db -c "SELECT cel_eval('2 + 3');"
         
     - name: Package artifacts
       run: |

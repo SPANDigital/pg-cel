@@ -80,7 +80,7 @@ func createCELEnv() (*cel.Env, error) {
 func pg_cel_eval(expressionStr *C.char, dataStr *C.char) *C.char {
 	// Ensure caches are initialized
 	ensureCachesInitialized()
-	
+
 	// Convert C strings to Go strings
 	exprString := C.GoString(expressionStr)
 	dataString := C.GoString(dataStr)
@@ -162,7 +162,7 @@ func pg_cel_eval(expressionStr *C.char, dataStr *C.char) *C.char {
 func pg_cel_eval_json(expressionStr *C.char, jsonData *C.char) *C.char {
 	// Ensure caches are initialized
 	ensureCachesInitialized()
-	
+
 	// Convert C strings to Go strings
 	exprString := C.GoString(expressionStr)
 	jsonString := C.GoString(jsonData)

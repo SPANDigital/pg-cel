@@ -52,7 +52,7 @@ func pg_init_caches(programCacheMB int, jsonCacheMB int) {
 func init() {
 	// Default initialization for standalone usage
 	// In PostgreSQL, pg_init_caches will be called with configured values
-	pg_init_caches(256, 128) // 256MB program cache, 128MB JSON cache
+	pg_init_caches(128, 64) // 128MB program cache, 64MB JSON cache (halved from 256MB/128MB)
 }
 
 // Create a CEL environment with common extensions

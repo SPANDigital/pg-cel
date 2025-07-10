@@ -8,8 +8,8 @@
 PG_MODULE_MAGIC;
 
 // Configuration variables
-static int program_cache_size_mb = 256;   // Default 256MB
-static int json_cache_size_mb = 128;      // Default 128MB
+static int program_cache_size_mb = 128;   // Default 128MB (halved from 256MB)
+static int json_cache_size_mb = 64;       // Default 64MB (halved from 128MB)
 
 // Forward declarations for Go functions (these are the actual Go function names)
 extern char* pg_cel_eval(char* expression, char* data);
@@ -30,7 +30,7 @@ _PG_init(void)
                            "Size of CEL program cache in MB",
                            "Sets the maximum size of the CEL program compilation cache in megabytes.",
                            &program_cache_size_mb,
-                           256,            // default value
+                           128,            // default value (halved from 256MB)
                            64,             // min value (64MB)
                            8192,           // max value (8GB)
                            PGC_SUSET,      // can be set by superuser
@@ -43,7 +43,7 @@ _PG_init(void)
                            "Size of JSON cache in MB",
                            "Sets the maximum size of the JSON parsing cache in megabytes.",
                            &json_cache_size_mb,
-                           128,            // default value
+                           64,             // default value (halved from 128MB)
                            32,             // min value (32MB)
                            4096,           // max value (4GB)
                            PGC_SUSET,      // can be set by superuser

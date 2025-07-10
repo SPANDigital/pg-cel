@@ -15,14 +15,14 @@ import (
 
 // TestContext holds the state for BDD tests
 type TestContext struct {
-	db              *sql.DB
-	lastResult      string
-	lastResultType  string
-	lastError       error
-	jsonData        string
-	cacheStats      map[string]interface{}
-	sqlResults      []map[string]interface{}
-	transaction     *sql.Tx
+	db                *sql.DB
+	lastResult        string
+	lastResultType    string
+	lastError         error
+	jsonData          string
+	cacheStats        map[string]interface{}
+	sqlResults        []map[string]interface{}
+	transaction       *sql.Tx
 	initialCacheStats map[string]interface{}
 }
 
@@ -77,16 +77,16 @@ func (tc *TestContext) theCacheIsCleared(ctx context.Context) (context.Context, 
 // CEL evaluation steps
 func (tc *TestContext) iEvaluateCELExpression(ctx context.Context, expression string) (context.Context, error) {
 	tc.lastError = nil
-	
+
 	var result sql.NullString
 	query := "SELECT cel_eval($1) as result"
 	err := tc.db.QueryRow(query, expression).Scan(&result)
-	
+
 	if err != nil {
 		tc.lastError = err
 		return ctx, nil
 	}
-	
+
 	if result.Valid {
 		tc.lastResult = result.String
 		tc.lastResultType = tc.inferType(result.String)
@@ -94,7 +94,7 @@ func (tc *TestContext) iEvaluateCELExpression(ctx context.Context, expression st
 		tc.lastResult = ""
 		tc.lastResultType = "null"
 	}
-	
+
 	return ctx, nil
 }
 
@@ -112,28 +112,28 @@ func (tc *TestContext) iEvaluateCELExpressionMultipleTimes(ctx context.Context, 
 
 func (tc *TestContext) iEvaluateInvalidCELExpression(ctx context.Context, expression string) (context.Context, error) {
 	tc.lastError = nil
-	
+
 	var result sql.NullString
 	query := "SELECT cel_eval($1) as result"
 	err := tc.db.QueryRow(query, expression).Scan(&result)
-	
+
 	// We expect an error for invalid expressions
 	tc.lastError = err
-	
+
 	return ctx, nil
 }
 
 // JSON data steps
 func (tc *TestContext) iHaveJSONData(ctx context.Context, jsonDoc *godog.DocString) (context.Context, error) {
 	tc.jsonData = jsonDoc.Content
-	
+
 	// Validate JSON
 	var temp interface{}
 	err := json.Unmarshal([]byte(tc.jsonData), &temp)
 	if err != nil {
 		return ctx, fmt.Errorf("invalid JSON data: %v", err)
 	}
-	
+
 	return ctx, nil
 }
 
@@ -150,12 +150,12 @@ func (tc *TestContext) iHaveJSONDataWithElements(ctx context.Context, size int) 
 		elements[i] = i + 1
 	}
 	data["data"] = elements
-	
+
 	jsonBytes, err := json.Marshal(data)
 	if err != nil {
 		return ctx, fmt.Errorf("failed to generate JSON data: %v", err)
 	}
-	
+
 	tc.jsonData = string(jsonBytes)
 	return ctx, nil
 }
@@ -165,11 +165,11 @@ func (tc *TestContext) theResultShouldBe(ctx context.Context, expected string) e
 	if tc.lastError != nil {
 		return fmt.Errorf("expected result %s but got error: %v", expected, tc.lastError)
 	}
-	
+
 	if tc.lastResult != expected {
 		return fmt.Errorf("expected result %s but got %s", expected, tc.lastResult)
 	}
-	
+
 	return nil
 }
 
@@ -177,11 +177,11 @@ func (tc *TestContext) theResultTypeShouldBe(ctx context.Context, expectedType s
 	if tc.lastError != nil {
 		return fmt.Errorf("expected type %s but got error: %v", expectedType, tc.lastError)
 	}
-	
+
 	if tc.lastResultType != expectedType {
 		return fmt.Errorf("expected type %s but got %s", expectedType, tc.lastResultType)
 	}
-	
+
 	return nil
 }
 
@@ -190,13 +190,13 @@ func (tc *TestContext) iShouldReceiveACompilationError(ctx context.Context) erro
 	if tc.lastError == nil {
 		return fmt.Errorf("expected a compilation error but got none")
 	}
-	
+
 	// Check if the error is related to compilation
 	errorMsg := strings.ToLower(tc.lastError.Error())
 	if !strings.Contains(errorMsg, "compilation") && !strings.Contains(errorMsg, "parse") && !strings.Contains(errorMsg, "syntax") {
 		return fmt.Errorf("expected compilation error but got: %v", tc.lastError)
 	}
-	
+
 	return nil
 }
 
@@ -204,7 +204,7 @@ func (tc *TestContext) iShouldReceiveARuntimeError(ctx context.Context) error {
 	if tc.lastError == nil {
 		return fmt.Errorf("expected a runtime error but got none")
 	}
-	
+
 	// For our purposes, any error during evaluation is considered a runtime error
 	// if it's not a compilation error
 	return nil
@@ -214,12 +214,12 @@ func (tc *TestContext) iShouldReceiveAJSONParsingError(ctx context.Context) erro
 	if tc.lastError == nil {
 		return fmt.Errorf("expected a JSON parsing error but got none")
 	}
-	
+
 	errorMsg := strings.ToLower(tc.lastError.Error())
 	if !strings.Contains(errorMsg, "json") {
 		return fmt.Errorf("expected JSON parsing error but got: %v", tc.lastError)
 	}
-	
+
 	return nil
 }
 
@@ -234,14 +234,14 @@ func (tc *TestContext) theErrorMessageShouldContain(ctx context.Context, expecte
 	if tc.lastError == nil {
 		return fmt.Errorf("no error to check message for")
 	}
-	
+
 	errorMsg := strings.ToLower(tc.lastError.Error())
 	expectedText = strings.ToLower(expectedText)
-	
+
 	if !strings.Contains(errorMsg, expectedText) {
 		return fmt.Errorf("expected error message to contain '%s' but got: %v", expectedText, tc.lastError)
 	}
-	
+
 	return nil
 }
 
@@ -249,9 +249,9 @@ func (tc *TestContext) theErrorTypeShouldBe(ctx context.Context, errorType strin
 	if tc.lastError == nil {
 		return fmt.Errorf("expected error type %s but got no error", errorType)
 	}
-	
+
 	errorMsg := strings.ToLower(tc.lastError.Error())
-	
+
 	switch errorType {
 	case "compilation":
 		if !strings.Contains(errorMsg, "compilation") && !strings.Contains(errorMsg, "parse") && !strings.Contains(errorMsg, "syntax") {
@@ -263,7 +263,7 @@ func (tc *TestContext) theErrorTypeShouldBe(ctx context.Context, errorType strin
 	default:
 		return fmt.Errorf("unknown error type: %s", errorType)
 	}
-	
+
 	return nil
 }
 
@@ -281,13 +281,13 @@ func (tc *TestContext) theProgramCacheShouldBeEmpty(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to get cache statistics: %v", err)
 	}
-	
+
 	if programEntries, ok := stats["program_entries"]; ok {
 		if count, ok := programEntries.(float64); ok && count != 0 {
 			return fmt.Errorf("expected program cache to be empty but found %v entries", count)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -296,13 +296,13 @@ func (tc *TestContext) theJSONCacheShouldBeEmpty(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to get cache statistics: %v", err)
 	}
-	
+
 	if jsonEntries, ok := stats["json_entries"]; ok {
 		if count, ok := jsonEntries.(float64); ok && count != 0 {
 			return fmt.Errorf("expected JSON cache to be empty but found %v entries", count)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -311,12 +311,12 @@ func (tc *TestContext) theProgramCacheHitRateShouldIncrease(ctx context.Context)
 	if err != nil {
 		return fmt.Errorf("failed to get cache statistics: %v", err)
 	}
-	
+
 	hitRate := tc.calculateCacheHitRate(stats, "program")
 	if hitRate <= 0 {
 		return fmt.Errorf("expected program cache hit rate to increase but got %v", hitRate)
 	}
-	
+
 	return nil
 }
 
@@ -325,12 +325,12 @@ func (tc *TestContext) theJSONCacheHitRateShouldIncrease(ctx context.Context) er
 	if err != nil {
 		return fmt.Errorf("failed to get cache statistics: %v", err)
 	}
-	
+
 	hitRate := tc.calculateCacheHitRate(stats, "json")
 	if hitRate <= 0 {
 		return fmt.Errorf("expected JSON cache hit rate to increase but got %v", hitRate)
 	}
-	
+
 	return nil
 }
 
@@ -339,12 +339,12 @@ func (tc *TestContext) theCacheHitRateShouldBeGreaterThan(ctx context.Context, e
 	if err != nil {
 		return fmt.Errorf("failed to get cache statistics: %v", err)
 	}
-	
+
 	hitRate := tc.calculateCacheHitRate(stats, "program")
 	if hitRate < float64(expectedRate) {
 		return fmt.Errorf("expected cache hit rate to be greater than %d%% but got %v%%", expectedRate, hitRate)
 	}
-	
+
 	return nil
 }
 
@@ -378,14 +378,14 @@ func (tc *TestContext) iHaveATestTableWithData(ctx context.Context) (context.Con
 			('{"user": {"profile": {"email": "john@example.com"}, "permissions": ["read", "write"], "active": true}}'),
 			('{"user": {"profile": {"email": "jane@example.com"}, "permissions": ["read"], "active": false}}')`,
 	}
-	
+
 	for _, query := range queries {
 		_, err := tc.db.Exec(query)
 		if err != nil {
 			return ctx, fmt.Errorf("failed to setup test table: %v", err)
 		}
 	}
-	
+
 	return ctx, nil
 }
 
@@ -397,40 +397,40 @@ func (tc *TestContext) iHaveATableWithJSONData(ctx context.Context) (context.Con
 func (tc *TestContext) iExecuteSQL(ctx context.Context, sqlDoc *godog.DocString) (context.Context, error) {
 	tc.lastError = nil
 	tc.sqlResults = make([]map[string]interface{}, 0)
-	
+
 	rows, err := tc.db.Query(sqlDoc.Content)
 	if err != nil {
 		tc.lastError = err
 		return ctx, nil
 	}
 	defer rows.Close()
-	
+
 	columns, err := rows.Columns()
 	if err != nil {
 		tc.lastError = err
 		return ctx, nil
 	}
-	
+
 	for rows.Next() {
 		values := make([]interface{}, len(columns))
 		valuePtrs := make([]interface{}, len(columns))
 		for i := range values {
 			valuePtrs[i] = &values[i]
 		}
-		
+
 		err := rows.Scan(valuePtrs...)
 		if err != nil {
 			tc.lastError = err
 			return ctx, nil
 		}
-		
+
 		row := make(map[string]interface{})
 		for i, col := range columns {
 			row[col] = values[i]
 		}
 		tc.sqlResults = append(tc.sqlResults, row)
 	}
-	
+
 	return ctx, nil
 }
 
@@ -438,11 +438,11 @@ func (tc *TestContext) theSQLResultShouldBe(ctx context.Context, expected string
 	if tc.lastError != nil {
 		return fmt.Errorf("expected SQL result %s but got error: %v", expected, tc.lastError)
 	}
-	
+
 	if len(tc.sqlResults) == 0 {
 		return fmt.Errorf("expected SQL result %s but got no results", expected)
 	}
-	
+
 	// Get the first column of the first row
 	for _, value := range tc.sqlResults[0] {
 		resultStr := fmt.Sprintf("%v", value)
@@ -450,7 +450,7 @@ func (tc *TestContext) theSQLResultShouldBe(ctx context.Context, expected string
 			return nil
 		}
 	}
-	
+
 	return fmt.Errorf("expected SQL result %s but got different result", expected)
 }
 
@@ -458,11 +458,11 @@ func (tc *TestContext) theSQLShouldReturnResults(ctx context.Context) error {
 	if tc.lastError != nil {
 		return fmt.Errorf("expected SQL to return results but got error: %v", tc.lastError)
 	}
-	
+
 	if len(tc.sqlResults) == 0 {
 		return fmt.Errorf("expected SQL to return results but got none")
 	}
-	
+
 	return nil
 }
 
@@ -470,7 +470,7 @@ func (tc *TestContext) theColumnShouldContainBooleanValues(ctx context.Context, 
 	if len(tc.sqlResults) == 0 {
 		return fmt.Errorf("no SQL results to check")
 	}
-	
+
 	for _, row := range tc.sqlResults {
 		if value, exists := row[columnName]; exists {
 			// Check if value is boolean-like
@@ -481,7 +481,7 @@ func (tc *TestContext) theColumnShouldContainBooleanValues(ctx context.Context, 
 			return fmt.Errorf("column %s not found in results", columnName)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -489,11 +489,11 @@ func (tc *TestContext) theSQLResultTypeShouldBe(ctx context.Context, expectedTyp
 	if tc.lastError != nil {
 		return fmt.Errorf("expected SQL result type %s but got error: %v", expectedType, tc.lastError)
 	}
-	
+
 	if len(tc.sqlResults) == 0 {
 		return fmt.Errorf("expected SQL result type %s but got no results", expectedType)
 	}
-	
+
 	// This is a simplified type check - in real implementation you'd check the actual SQL types
 	return nil
 }
@@ -512,13 +512,13 @@ func (tc *TestContext) iEvaluateCELExpressionsInTheTransaction(ctx context.Conte
 	if tc.transaction == nil {
 		return ctx, fmt.Errorf("no active transaction")
 	}
-	
+
 	// Execute some CEL expressions within the transaction
 	_, err := tc.transaction.Exec("SELECT cel_eval('1 + 1')")
 	if err != nil {
 		return ctx, fmt.Errorf("failed to evaluate CEL in transaction: %v", err)
 	}
-	
+
 	return ctx, nil
 }
 
@@ -526,13 +526,13 @@ func (tc *TestContext) iRollbackTheTransaction(ctx context.Context) (context.Con
 	if tc.transaction == nil {
 		return ctx, fmt.Errorf("no active transaction to rollback")
 	}
-	
+
 	err := tc.transaction.Rollback()
 	tc.transaction = nil
 	if err != nil {
 		return ctx, fmt.Errorf("failed to rollback transaction: %v", err)
 	}
-	
+
 	return ctx, nil
 }
 
@@ -542,12 +542,12 @@ func (tc *TestContext) theCacheShouldRemainConsistent(ctx context.Context) error
 	if err != nil {
 		return fmt.Errorf("failed to get cache statistics: %v", err)
 	}
-	
+
 	// Basic consistency check - cache should still exist and be functional
 	if stats == nil {
 		return fmt.Errorf("cache statistics not available")
 	}
-	
+
 	return nil
 }
 
@@ -557,20 +557,20 @@ func (tc *TestContext) inferType(value string) string {
 	if value == "true" || value == "false" {
 		return "boolean"
 	}
-	
+
 	if _, err := strconv.Atoi(value); err == nil {
 		return "integer"
 	}
-	
+
 	if _, err := strconv.ParseFloat(value, 64); err == nil {
 		return "double"
 	}
-	
+
 	// Check if it's a list (starts with [ and ends with ])
 	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
 		return "list"
 	}
-	
+
 	return "string"
 }
 
@@ -580,32 +580,32 @@ func (tc *TestContext) getCacheStatistics() (map[string]interface{}, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cache stats: %v", err)
 	}
-	
+
 	var stats map[string]interface{}
 	err = json.Unmarshal([]byte(statsJSON), &stats)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse cache stats JSON: %v", err)
 	}
-	
+
 	return stats, nil
 }
 
 func (tc *TestContext) calculateCacheHitRate(stats map[string]interface{}, cacheType string) float64 {
 	hitsKey := cacheType + "_hits"
 	missesKey := cacheType + "_misses"
-	
+
 	hits, hitsOk := stats[hitsKey].(float64)
 	misses, missesOk := stats[missesKey].(float64)
-	
+
 	if !hitsOk || !missesOk {
 		return 0
 	}
-	
+
 	total := hits + misses
 	if total == 0 {
 		return 0
 	}
-	
+
 	return (hits / total) * 100
 }
 
@@ -618,14 +618,14 @@ func (tc *TestContext) iEvaluateSeveralDifferentCELExpressions(ctx context.Conte
 		"[1, 2, 3].size()",
 		"10 > 5",
 	}
-	
+
 	for _, expr := range expressions {
 		ctx, err := tc.iEvaluateCELExpression(ctx, expr)
 		if err != nil {
 			return ctx, err
 		}
 	}
-	
+
 	return ctx, nil
 }
 
@@ -642,14 +642,14 @@ func (tc *TestContext) iShouldSeeCacheHitAndMissCounts(ctx context.Context) erro
 	if tc.cacheStats == nil {
 		return fmt.Errorf("no cache statistics available")
 	}
-	
+
 	requiredKeys := []string{"program_hits", "program_misses", "json_hits", "json_misses"}
 	for _, key := range requiredKeys {
 		if _, exists := tc.cacheStats[key]; !exists {
 			return fmt.Errorf("missing cache statistic: %s", key)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -657,14 +657,14 @@ func (tc *TestContext) iShouldSeeCacheSizes(ctx context.Context) error {
 	if tc.cacheStats == nil {
 		return fmt.Errorf("no cache statistics available")
 	}
-	
+
 	requiredKeys := []string{"program_entries", "json_entries"}
 	for _, key := range requiredKeys {
 		if _, exists := tc.cacheStats[key]; !exists {
 			return fmt.Errorf("missing cache size statistic: %s", key)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -672,13 +672,13 @@ func (tc *TestContext) iShouldSeeMemoryUsageInformation(ctx context.Context) err
 	if tc.cacheStats == nil {
 		return fmt.Errorf("no cache statistics available")
 	}
-	
+
 	// Check for memory-related statistics
 	if _, exists := tc.cacheStats["memory_usage"]; !exists {
 		// Memory usage might not be directly available, so we'll accept cache entries as memory indicators
 		return nil
 	}
-	
+
 	return nil
 }
 
@@ -699,14 +699,14 @@ func (tc *TestContext) theCacheShouldRespectMemoryLimits(ctx context.Context) er
 	if err != nil {
 		return fmt.Errorf("failed to get cache statistics: %v", err)
 	}
-	
+
 	// This is a basic check - in a real implementation you'd check actual memory usage
 	if entries, ok := stats["program_entries"].(float64); ok {
 		if entries > 1000 { // Arbitrary large number
 			return fmt.Errorf("cache entries (%v) exceed expected limits", entries)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -718,11 +718,11 @@ func (tc *TestContext) olderEntriesShouldBeEvictedWhenLimitIsReached(ctx context
 
 func (tc *TestContext) iEvaluateTheSameExpressionWithDifferentJSONData(ctx context.Context) (context.Context, error) {
 	expression := "user.name"
-	
+
 	// Evaluate with different JSON data
 	jsonData1 := `{"user": {"name": "John"}}`
 	jsonData2 := `{"user": {"name": "Jane"}}`
-	
+
 	for _, data := range []string{jsonData1, jsonData2} {
 		var result string
 		query := "SELECT cel_eval_json($1, $2) as result"
@@ -731,7 +731,7 @@ func (tc *TestContext) iEvaluateTheSameExpressionWithDifferentJSONData(ctx conte
 			return ctx, fmt.Errorf("failed to evaluate with JSON data: %v", err)
 		}
 	}
-	
+
 	return ctx, nil
 }
 
@@ -748,11 +748,11 @@ func (tc *TestContext) cacheHitsShouldOnlyOccurForIdenticalExpressionDataPairs(c
 	if err != nil {
 		return fmt.Errorf("failed to get cache statistics: %v", err)
 	}
-	
+
 	if stats == nil {
 		return fmt.Errorf("no cache statistics available")
 	}
-	
+
 	return nil
 }
 
@@ -761,18 +761,18 @@ func (tc *TestContext) iStartANewDatabaseSession(ctx context.Context) (context.C
 	if tc.db != nil {
 		tc.db.Close()
 	}
-	
+
 	// Open a new connection
 	var err error
 	tc.db, err = sql.Open("postgres", "user=postgres dbname=test_pgcel sslmode=disable")
 	if err != nil {
 		return ctx, fmt.Errorf("failed to open new database session: %v", err)
 	}
-	
+
 	if err = tc.db.Ping(); err != nil {
 		return ctx, fmt.Errorf("failed to ping database in new session: %v", err)
 	}
-	
+
 	return ctx, nil
 }
 
@@ -786,7 +786,7 @@ func (tc *TestContext) theSQLShouldReturnOnlyUsersAgedOrAbove(ctx context.Contex
 	if tc.lastError != nil {
 		return fmt.Errorf("SQL execution failed: %v", tc.lastError)
 	}
-	
+
 	for _, row := range tc.sqlResults {
 		if age, exists := row["age"]; exists {
 			if ageInt, ok := age.(int64); ok {
@@ -796,7 +796,7 @@ func (tc *TestContext) theSQLShouldReturnOnlyUsersAgedOrAbove(ctx context.Contex
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -804,11 +804,11 @@ func (tc *TestContext) theSQLShouldReturnProcessedJSONData(ctx context.Context) 
 	if tc.lastError != nil {
 		return fmt.Errorf("SQL execution failed: %v", tc.lastError)
 	}
-	
+
 	if len(tc.sqlResults) == 0 {
 		return fmt.Errorf("expected processed JSON data but got no results")
 	}
-	
+
 	// Verify that we have the expected columns
 	expectedColumns := []string{"id", "email", "permission_count"}
 	for _, row := range tc.sqlResults {
@@ -818,7 +818,7 @@ func (tc *TestContext) theSQLShouldReturnProcessedJSONData(ctx context.Context) 
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -835,25 +835,25 @@ func (tc *TestContext) cleanup() {
 // ScenarioInitializer initializes the step definitions
 func InitializeScenario(sc *godog.ScenarioContext) {
 	tc := NewTestContext()
-	
+
 	// Background steps
 	sc.Given(`^pg-cel extension is loaded$`, tc.pgCelExtensionIsLoaded)
 	sc.Given(`^the cache is cleared$`, tc.theCacheIsCleared)
-	
+
 	// CEL evaluation steps
 	sc.When(`^I evaluate CEL expression "([^"]*)"$`, tc.iEvaluateCELExpression)
 	sc.When(`^I evaluate CEL expression "([^"]*)" multiple times$`, tc.iEvaluateCELExpressionMultipleTimes)
 	sc.When(`^I evaluate invalid CEL expression "([^"]*)"$`, tc.iEvaluateInvalidCELExpression)
-	
+
 	// JSON data steps
 	sc.Given(`^I have JSON data:$`, tc.iHaveJSONData)
 	sc.Given(`^I have invalid JSON data:$`, tc.iHaveInvalidJSONData)
 	sc.Given(`^I have JSON data with (\d+) elements$`, tc.iHaveJSONDataWithElements)
-	
+
 	// Result validation steps
 	sc.Then(`^the result should be "([^"]*)"$`, tc.theResultShouldBe)
 	sc.Then(`^the result type should be "([^"]*)"$`, tc.theResultTypeShouldBe)
-	
+
 	// Error handling steps
 	sc.Then(`^I should receive a compilation error$`, tc.iShouldReceiveACompilationError)
 	sc.Then(`^I should receive a runtime error$`, tc.iShouldReceiveARuntimeError)
@@ -861,7 +861,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	sc.Then(`^I should receive an error$`, tc.iShouldReceiveAnError)
 	sc.Then(`^the error message should contain "([^"]*)"$`, tc.theErrorMessageShouldContain)
 	sc.Then(`^the error type should be "([^"]*)"$`, tc.theErrorTypeShouldBe)
-	
+
 	// Cache-related steps
 	sc.When(`^I clear the cache$`, tc.iClearTheCache)
 	sc.Then(`^the program cache should be empty$`, tc.theProgramCacheShouldBeEmpty)
@@ -869,7 +869,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	sc.Then(`^the program cache hit rate should increase$`, tc.theProgramCacheHitRateShouldIncrease)
 	sc.Then(`^the JSON cache hit rate should increase$`, tc.theJSONCacheHitRateShouldIncrease)
 	sc.Then(`^the cache hit rate should be greater than (\d+)%$`, tc.theCacheHitRateShouldBeGreaterThan)
-	
+
 	// Cache management steps
 	sc.When(`^I evaluate several different CEL expressions$`, tc.iEvaluateSeveralDifferentCELExpressions)
 	sc.When(`^I check cache statistics$`, tc.iCheckCacheStatistics)
@@ -879,16 +879,16 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	sc.When(`^I fill the cache with many expressions$`, tc.iFillTheCacheWithManyExpressions)
 	sc.Then(`^the cache should respect memory limits$`, tc.theCacheShouldRespectMemoryLimits)
 	sc.Then(`^older entries should be evicted when limit is reached$`, tc.olderEntriesShouldBeEvictedWhenLimitIsReached)
-	
+
 	// Cache uniqueness steps
 	sc.When(`^I evaluate the same expression with different JSON data$`, tc.iEvaluateTheSameExpressionWithDifferentJSONData)
 	sc.Then(`^each combination should have a unique cache key$`, tc.eachCombinationShouldHaveAUniqueCacheKey)
 	sc.Then(`^cache hits should only occur for identical expression\+data pairs$`, tc.cacheHitsShouldOnlyOccurForIdenticalExpressionDataPairs)
-	
+
 	// Session persistence steps
 	sc.When(`^I start a new database session$`, tc.iStartANewDatabaseSession)
 	sc.Then(`^the expression should be cached from the previous session$`, tc.theExpressionShouldBeCachedFromThePreviousSession)
-	
+
 	// SQL integration steps
 	sc.Given(`^I have a test table with data$`, tc.iHaveATestTableWithData)
 	sc.Given(`^I have a table with JSON data$`, tc.iHaveATableWithJSONData)
@@ -899,13 +899,13 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	sc.Then(`^the SQL result type should be "([^"]*)"$`, tc.theSQLResultTypeShouldBe)
 	sc.Then(`^the SQL should return only users aged (\d+) or above$`, tc.theSQLShouldReturnOnlyUsersAgedOrAbove)
 	sc.Then(`^the SQL should return processed JSON data$`, tc.theSQLShouldReturnProcessedJSONData)
-	
+
 	// Transaction steps
 	sc.Given(`^I start a database transaction$`, tc.iStartADatabaseTransaction)
 	sc.When(`^I evaluate CEL expressions in the transaction$`, tc.iEvaluateCELExpressionsInTheTransaction)
 	sc.When(`^I rollback the transaction$`, tc.iRollbackTheTransaction)
 	sc.Then(`^the cache should remain consistent$`, tc.theCacheShouldRemainConsistent)
-	
+
 	// Add cleanup after each scenario
 	sc.After(func(ctx context.Context, sc *godog.Scenario, err error) (context.Context, error) {
 		tc.cleanup()

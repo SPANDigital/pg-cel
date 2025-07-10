@@ -2,9 +2,9 @@ EXTENSION = pg_cel
 
 # Extension SQL files (organized by type)
 # Installation scripts (base versions)
-INSTALL_SCRIPTS = pg_cel--1.0.6.sql pg_cel--1.0.7.sql pg_cel--1.1.0.sql pg_cel--1.2.0.sql pg_cel--1.2.1.sql pg_cel--1.3.0.sql pg_cel--1.3.1.sql pg_cel--1.3.2.sql pg_cel--1.4.0.sql pg_cel--1.5.0.sql
+INSTALL_SCRIPTS = pg_cel--1.4.0.sql pg_cel--1.5.0.sql pg_cel--1.6.0.sql
 # Upgrade scripts (version transitions)  
-UPGRADE_SCRIPTS = pg_cel--1.0.6--1.0.7.sql pg_cel--1.0.7--1.1.0.sql pg_cel--1.1.0--1.2.0.sql pg_cel--1.2.0--1.2.1.sql pg_cel--1.2.1--1.3.0.sql pg_cel--1.3.0--1.3.1.sql pg_cel--1.3.1--1.3.2.sql pg_cel--1.3.2--1.4.0.sql pg_cel--1.4.0--1.5.0.sql
+UPGRADE_SCRIPTS = pg_cel--1.4.0--1.5.0.sql pg_cel--1.5.0--1.6.0.sql
 # All SQL files for PostgreSQL
 DATA = $(INSTALL_SCRIPTS) $(UPGRADE_SCRIPTS)
 

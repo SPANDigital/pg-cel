@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         postgres-version: [14, 15, 16, 17]
-        go-version: ['1.23']
+        go-version: ['1.24']
 
     services:
       postgres:
@@ -25,8 +25,9 @@ jobs:
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: test_pgcel
+          POSTGRES_USER: postgres
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -h localhost -p 5432 -U postgres"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -59,6 +60,18 @@ jobs:
         # Verify pg_config is available
         ls -la /usr/lib/postgresql/${{ matrix.postgres-version }}/bin/pg_config
         /usr/lib/postgresql/${{ matrix.postgres-version }}/bin/pg_config --version
+        
+        # Verify service container PostgreSQL version matches
+        echo "Verifying PostgreSQL service container..."
+        for i in {1..10}; do
+          if pg_isready -h localhost -p 5432 -U postgres; then
+            echo "PostgreSQL service is ready!"
+            psql -h localhost -p 5432 -U postgres -d test_pgcel -c "SELECT version();" || echo "Version check failed"
+            break
+          fi
+          echo "Attempt $i: PostgreSQL not ready yet, waiting..."
+          sleep 2
+        done
 
     - name: Install Go dependencies
       run: |
@@ -81,17 +94,59 @@ jobs:
         echo "CC: $CC"
         echo "Platform: $(uname -s)"
         echo "Architecture: $(uname -m)"
-        # Test Go build capability
-        echo "Testing Go build..."
-        go build -buildmode=c-archive -o test.a main.go || echo "Go build test failed"
-        ls -la test.a 2>/dev/null && rm test.a || echo "Go archive test not found"
-        # Run actual build
-        ./build.sh
+        
+        # Verify Go toolchain compatibility
+        echo "Go environment:"
+        go env | grep -E "(GOOS|GOARCH|CGO|CC)"
+        
+        # Check GCC compatibility  
+        echo "GCC version:"
+        gcc --version
+        
+        # Test Go build capability with verbose output
+        echo "Testing Go CGO build..."
+        go build -v -x -buildmode=c-archive -o test.a main.go 2>&1 || {
+          echo "Go CGO build test failed"
+          echo "Checking build environment..."
+          find /usr/include -name "*.h" -path "*postgres*" 2>/dev/null | head -5 || echo "No PostgreSQL headers found in standard location"
+          echo "Available pg_config details:"
+          $PG_CONFIG --includedir
+          $PG_CONFIG --libdir  
+          $PG_CONFIG --pkglibdir
+          exit 1
+        }
+        ls -la test.a 2>/dev/null && rm test.a || echo "Go archive test cleanup"
+        
+        # Run actual build with verbose output
+        echo "Starting actual build..."
+        ./build.sh build
 
     - name: Install pg-cel extension
       run: |
         export PG_CONFIG=/usr/lib/postgresql/${{ matrix.postgres-version }}/bin/pg_config
-        sudo make install
+        echo "Installing extension with PostgreSQL ${{ matrix.postgres-version }}..."
+        
+        # Verify build artifacts exist
+        echo "Checking build artifacts:"
+        ls -la pg_cel.so pg_cel_go.a pg_cel_go.h 2>/dev/null || {
+          echo "Build artifacts missing, checking directory contents:"
+          ls -la
+          echo "Build may have failed"
+          exit 1
+        }
+        
+        # Install with verbose output
+        echo "Running make install..."
+        sudo make install V=1 || {
+          echo "Install failed, checking makefile variables:"
+          make -n install
+          echo "PostgreSQL directories:"
+          $PG_CONFIG --pkglibdir
+          $PG_CONFIG --sharedir
+          exit 1
+        }
+        
+        echo "Extension installed successfully!"
 
     - name: Setup test database
       env:

@@ -168,7 +168,14 @@ jobs:
         echo "Copying extension files to container..."
         docker cp pg_cel.so $CONTAINER_ID:/tmp/pg_cel.so
         docker cp pg_cel.control $CONTAINER_ID:/tmp/pg_cel.control
-        docker cp pg_cel--*.sql $CONTAINER_ID:/tmp/
+        
+        # Copy SQL files individually to avoid glob expansion issues
+        for sql_file in pg_cel--*.sql; do
+          if [ -f "$sql_file" ]; then
+            echo "Copying $sql_file to container..."
+            docker cp "$sql_file" $CONTAINER_ID:/tmp/
+          fi
+        done
         
         # Install extension files in container
         echo "Installing extension files in container..."

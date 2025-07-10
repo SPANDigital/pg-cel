@@ -4,6 +4,8 @@
 
 This is **pg-cel**, a PostgreSQL extension that integrates Google's CEL (Common Expression Language) with PostgreSQL. The extension allows evaluating CEL expressions directly within SQL queries with high-performance caching.
 
+Remember the owner of this repo is SPANDigital
+
 ## Architecture
 
 ### Core Components

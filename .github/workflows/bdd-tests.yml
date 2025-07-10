@@ -2,13 +2,14 @@ name: BDD Tests
 
 on:
   push:
-    branches: [ feature/godog-testing ]
+    branches: [ feature/godog-testing, main ]
   pull_request:
     branches: [ main ]
     paths:
       - 'features/**'
       - 'godog_*.go'
       - 'setup_bdd_tests.sh'
+      - '.github/workflows/bdd-tests.yml'
 
 jobs:
   bdd-tests:
@@ -129,40 +130,64 @@ jobs:
         make clean PG_CONFIG=$PG_CONFIG
         make PG_CONFIG=$PG_CONFIG
 
-    - name: Install pg-cel extension
+    - name: Install pg-cel extension in container
       run: |
-        export PG_CONFIG=/usr/lib/postgresql/${{ matrix.postgres-version }}/bin/pg_config
-        echo "Installing extension with PostgreSQL ${{ matrix.postgres-version }}..."
+        echo "Installing extension inside PostgreSQL container..."
         
-        # Verify build artifacts exist
-        echo "Checking build artifacts:"
-        ls -la pg_cel.so pg_cel_go.a pg_cel_go.h 2>/dev/null || {
+        # Verify build artifacts exist on host
+        echo "Checking build artifacts on host:"
+        ls -la pg_cel.so pg_cel_go.a pg_cel_go.h pg_cel.control pg_cel--*.sql 2>/dev/null || {
           echo "Build artifacts missing, checking directory contents:"
           ls -la
           echo "Build may have failed"
           exit 1
         }
         
-        # Verify PG_CONFIG is correct version
-        echo "Verifying PG_CONFIG points to correct PostgreSQL version:"
-        echo "PG_CONFIG=$PG_CONFIG"
-        $PG_CONFIG --version
-        echo "Extension install paths:"
-        echo "pkglibdir: $($PG_CONFIG --pkglibdir)"
-        echo "sharedir: $($PG_CONFIG --sharedir)"
+        # Get the PostgreSQL container ID
+        CONTAINER_ID=$(docker ps --filter "ancestor=postgres:${{ matrix.postgres-version }}" --format "{{.ID}}")
+        echo "PostgreSQL container ID: $CONTAINER_ID"
         
-        # Install with explicit PG_CONFIG for the Makefile
-        echo "Running make install with explicit PG_CONFIG..."
-        sudo make install PG_CONFIG=$PG_CONFIG V=1 || {
-          echo "Install failed, checking makefile variables:"
-          make -n install PG_CONFIG=$PG_CONFIG
-          echo "Available PostgreSQL directories:"
-          find /usr/lib/postgresql -name "pg_config" 2>/dev/null
-          find /usr/share/postgresql -name "extension" -type d 2>/dev/null
+        if [ -z "$CONTAINER_ID" ]; then
+          echo "ERROR: Could not find PostgreSQL container"
+          docker ps
+          exit 1
+        fi
+        
+        # Install build dependencies in the container
+        echo "Installing PostgreSQL dev tools in container..."
+        docker exec $CONTAINER_ID bash -c "apt-get update && apt-get install -y postgresql-server-dev-${{ matrix.postgres-version }}"
+        
+        # Get PostgreSQL paths from inside the container
+        echo "Getting PostgreSQL paths from container..."
+        CONTAINER_PKGLIBDIR=$(docker exec $CONTAINER_ID pg_config --pkglibdir)
+        CONTAINER_SHAREDIR=$(docker exec $CONTAINER_ID pg_config --sharedir)
+        echo "Container pkglibdir: $CONTAINER_PKGLIBDIR"
+        echo "Container sharedir: $CONTAINER_SHAREDIR"
+        
+        # Copy extension files to container
+        echo "Copying extension files to container..."
+        docker cp pg_cel.so $CONTAINER_ID:/tmp/pg_cel.so
+        docker cp pg_cel.control $CONTAINER_ID:/tmp/pg_cel.control
+        docker cp pg_cel--*.sql $CONTAINER_ID:/tmp/
+        
+        # Install extension files in container
+        echo "Installing extension files in container..."
+        docker exec -e CONTAINER_PKGLIBDIR="$CONTAINER_PKGLIBDIR" -e CONTAINER_SHAREDIR="$CONTAINER_SHAREDIR" $CONTAINER_ID bash -c '
+          cp /tmp/pg_cel.so $CONTAINER_PKGLIBDIR/pg_cel.so &&
+          cp /tmp/pg_cel.control $CONTAINER_SHAREDIR/extension/pg_cel.control &&
+          cp /tmp/pg_cel--*.sql $CONTAINER_SHAREDIR/extension/ &&
+          
+          # Verify installation
+          ls -la $CONTAINER_PKGLIBDIR/pg_cel.so &&
+          ls -la $CONTAINER_SHAREDIR/extension/pg_cel* &&
+          
+          echo "Extension installed successfully in container!"
+        ' || {
+          echo "Extension installation in container failed"
           exit 1
         }
         
-        echo "Extension installed successfully!"
+        echo "Extension installation completed!"
 
     - name: Setup test database
       env:
@@ -195,7 +220,30 @@ jobs:
         
         echo "Installing pg-cel extension..."
         # Enable pg-cel extension
-        psql -d test_pgcel -c "CREATE EXTENSION IF NOT EXISTS pg_cel;"
+        psql -d test_pgcel -c "CREATE EXTENSION IF NOT EXISTS pg_cel;" || {
+          echo "Extension installation failed, checking extension availability..."
+          psql -d test_pgcel -c "SELECT * FROM pg_available_extensions WHERE name='pg_cel';" || echo "Extension not available"
+          
+          # Check if extension files are visible from PostgreSQL
+          echo "Checking if extension files are accessible from PostgreSQL..."
+          psql -d test_pgcel -c "SHOW shared_preload_libraries;" || echo "Could not check shared libraries"
+          
+          # Get container ID and check extension files inside container
+          CONTAINER_ID=$(docker ps --filter "ancestor=postgres:${{ matrix.postgres-version }}" --format "{{.ID}}")
+          if [ -n "$CONTAINER_ID" ]; then
+            echo "Checking extension files in container $CONTAINER_ID:"
+            docker exec $CONTAINER_ID bash -c '
+              echo "Container PostgreSQL config:"
+              pg_config --pkglibdir
+              pg_config --sharedir
+              echo "Extension files in container:"
+              ls -la $(pg_config --pkglibdir)/pg_cel* 2>/dev/null || echo "No pg_cel.so found"
+              ls -la $(pg_config --sharedir)/extension/pg_cel* 2>/dev/null || echo "No pg_cel extension files found"
+            '
+          fi
+          
+          exit 1
+        }
         
         echo "Verifying pg-cel extension works..."
         # Verify extension works
@@ -204,6 +252,8 @@ jobs:
           psql -d test_pgcel -c "SELECT * FROM pg_extension WHERE extname='pg_cel';"
           exit 1
         }
+        
+        echo "Extension verification successful!"
 
     - name: Run BDD tests
       env:

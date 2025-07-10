@@ -61,7 +61,11 @@ jobs:
         /usr/lib/postgresql/${{ matrix.postgres-version }}/bin/pg_config --version
 
     - name: Install Go dependencies
-      run: go mod download
+      run: |
+        echo "Installing Go dependencies..."
+        go mod download
+        go mod verify
+        echo "Go dependencies installed successfully"
 
     - name: Build pg-cel extension
       env:
@@ -99,14 +103,24 @@ jobs:
       run: |
         # Wait for PostgreSQL to be ready
         echo "Waiting for PostgreSQL ${{ matrix.postgres-version }} to be ready..."
-        until pg_isready -h localhost -p 5432 -U postgres; do
-          echo "PostgreSQL not ready yet, waiting..."
+        for i in {1..30}; do
+          if pg_isready -h localhost -p 5432 -U postgres; then
+            echo "PostgreSQL is ready!"
+            break
+          fi
+          echo "Attempt $i: PostgreSQL not ready yet, waiting..."
           sleep 2
         done
         
+        # Verify PostgreSQL is actually ready
+        if ! pg_isready -h localhost -p 5432 -U postgres; then
+          echo "PostgreSQL failed to become ready after 60 seconds"
+          exit 1
+        fi
+        
         echo "PostgreSQL is ready. Creating test database..."
-        # Create test database
-        createdb test_pgcel || echo "Database may already exist"
+        # The database should already exist from the service, but let's make sure
+        createdb test_pgcel 2>/dev/null || echo "Database test_pgcel already exists"
         
         echo "Installing pg-cel extension..."
         # Enable pg-cel extension
@@ -114,7 +128,11 @@ jobs:
         
         echo "Verifying pg-cel extension works..."
         # Verify extension works
-        psql -d test_pgcel -c "SELECT cel_eval('1 + 1') as test;"
+        psql -d test_pgcel -c "SELECT cel_eval('1 + 1') as test;" || {
+          echo "Extension test failed, checking extension status..."
+          psql -d test_pgcel -c "SELECT * FROM pg_extension WHERE extname='pg_cel';"
+          exit 1
+        }
 
     - name: Run BDD tests
       env:
@@ -125,6 +143,21 @@ jobs:
         TEST_DB: test_pgcel
         POSTGRES_USER: postgres
       run: |
+        echo "Running BDD tests with environment:"
+        echo "PGHOST=$PGHOST"
+        echo "PGPORT=$PGPORT"
+        echo "PGUSER=$PGUSER"
+        echo "TEST_DB=$TEST_DB"
+        echo "POSTGRES_USER=$POSTGRES_USER"
+        
+        # Verify database connectivity before running tests
+        echo "Testing database connectivity..."
+        psql -d test_pgcel -c "SELECT version();" || {
+          echo "Database connectivity test failed"
+          exit 1
+        }
+        
+        # Run the actual BDD tests
         go test -v -godog.format=pretty ./godog_main_test.go ./godog_test.go
 
     - name: Run BDD tests with JUnit output

@@ -39,7 +39,7 @@ func NewTestContext() *TestContext {
 // Database connection steps
 func (tc *TestContext) pgCelExtensionIsLoaded(ctx context.Context) (context.Context, error) {
 	var err error
-	
+
 	// Get database connection parameters
 	dbUser := os.Getenv("POSTGRES_USER")
 	if dbUser == "" {
@@ -50,14 +50,14 @@ func (tc *TestContext) pgCelExtensionIsLoaded(ctx context.Context) (context.Cont
 			dbUser = currentUser.Username
 		}
 	}
-	
+
 	dbName := os.Getenv("TEST_DB")
 	if dbName == "" {
 		dbName = "test_pgcel"
 	}
-	
+
 	connStr := fmt.Sprintf("user=%s dbname=%s sslmode=disable", dbUser, dbName)
-	
+
 	// Connect to PostgreSQL test database
 	tc.db, err = sql.Open("postgres", connStr)
 	if err != nil {
@@ -104,17 +104,33 @@ func (tc *TestContext) iEvaluateCELExpression(ctx context.Context, expression st
 	var err error
 
 	// Use cel_eval_json if JSON data is available, otherwise use cel_eval
+	// Add timestamp to bypass PostgreSQL function caching for test accuracy
+	timestamp := time.Now().UnixNano()
 	if tc.jsonData != "" {
-		query = "SELECT cel_eval_json($1, $2) as result"
-		err = tc.db.QueryRow(query, expression, tc.jsonData).Scan(&result)
+		// Add timestamp comment to JSON to make it unique for PostgreSQL cache
+		jsonWithTimestamp := fmt.Sprintf(`{"_test_timestamp": %d, "data": %s}`, timestamp, tc.jsonData)
+		query = "SELECT cel_eval_json($1, (($2::json)->'data')::text) as result"
+		err = tc.db.QueryRow(query, expression, jsonWithTimestamp).Scan(&result)
 	} else {
-		query = "SELECT cel_eval($1) as result"
-		err = tc.db.QueryRow(query, expression).Scan(&result)
+		query = "SELECT cel_eval($1, $2) as result"
+		err = tc.db.QueryRow(query, expression, fmt.Sprintf("%d", timestamp)).Scan(&result)
 	}
 
 	if err != nil {
 		tc.lastError = err
 		return ctx, nil
+	}
+
+	// Check if result contains CEL error messages (since CEL returns errors as strings)
+	if result.Valid && result.String != "" {
+		resultStr := strings.ToLower(result.String)
+		if strings.Contains(resultStr, "cel compilation error") ||
+			strings.Contains(resultStr, "cel evaluation error") ||
+			strings.Contains(resultStr, "json parsing error") ||
+			strings.Contains(resultStr, "error:") {
+			tc.lastError = fmt.Errorf("%s", result.String)
+			return ctx, nil
+		}
 	}
 
 	if result.Valid {
@@ -148,16 +164,40 @@ func (tc *TestContext) iEvaluateInvalidCELExpression(ctx context.Context, expres
 	var err error
 
 	// Use cel_eval_json if JSON data is available, otherwise use cel_eval
+	// Add timestamp to bypass PostgreSQL function caching for test accuracy
+	timestamp := time.Now().UnixNano()
 	if tc.jsonData != "" {
-		query = "SELECT cel_eval_json($1, $2) as result"
-		err = tc.db.QueryRow(query, expression, tc.jsonData).Scan(&result)
+		// Add timestamp comment to JSON to make it unique for PostgreSQL cache
+		jsonWithTimestamp := fmt.Sprintf(`{"_test_timestamp": %d, "data": %s}`, timestamp, tc.jsonData)
+		query = "SELECT cel_eval_json($1, (($2::json)->'data')::text) as result"
+		err = tc.db.QueryRow(query, expression, jsonWithTimestamp).Scan(&result)
 	} else {
-		query = "SELECT cel_eval($1) as result"
-		err = tc.db.QueryRow(query, expression).Scan(&result)
+		query = "SELECT cel_eval($1, $2) as result"
+		err = tc.db.QueryRow(query, expression, fmt.Sprintf("%d", timestamp)).Scan(&result)
 	}
 
-	// We expect an error for invalid expressions
-	tc.lastError = err
+	// Check if SQL query failed
+	if err != nil {
+		tc.lastError = err
+		return ctx, nil
+	}
+
+	// Check if result contains CEL error messages (since CEL returns errors as strings)
+	if result.Valid && result.String != "" {
+		resultStr := strings.ToLower(result.String)
+		if strings.Contains(resultStr, "cel compilation error") ||
+			strings.Contains(resultStr, "cel evaluation error") ||
+			strings.Contains(resultStr, "json parsing error") ||
+			strings.Contains(resultStr, "error:") {
+			tc.lastError = fmt.Errorf("%s", result.String)
+			return ctx, nil
+		}
+	}
+
+	// Store the result for further checks
+	if result.Valid {
+		tc.lastResult = result.String
+	}
 
 	return ctx, nil
 }
@@ -429,7 +469,25 @@ func (tc *TestContext) iHaveATestTableWithData(ctx context.Context) (context.Con
 }
 
 func (tc *TestContext) iHaveATableWithJSONData(ctx context.Context) (context.Context, error) {
-	// This step is already handled by iHaveATestTableWithData
+	// Ensure the json_table is set up with test data
+	queries := []string{
+		`CREATE TABLE IF NOT EXISTS json_table (
+			id SERIAL PRIMARY KEY,
+			data JSONB
+		)`,
+		`DELETE FROM json_table`,
+		`INSERT INTO json_table (data) VALUES 
+			('{"user": {"profile": {"email": "john@example.com"}, "permissions": ["read", "write"], "active": true}}'),
+			('{"user": {"profile": {"email": "jane@example.com"}, "permissions": ["read"], "active": false}}')`,
+	}
+
+	for _, query := range queries {
+		_, err := tc.db.Exec(query)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to setup JSON table: %v", err)
+		}
+	}
+
 	return ctx, nil
 }
 
@@ -597,17 +655,24 @@ func (tc *TestContext) inferType(value string) string {
 		return "boolean"
 	}
 
+	// Check if it's a list (starts with [ and ends with ])
+	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
+		return "list"
+	}
+
+	// For mathematical expressions that might return doubles but appear as integers,
+	// we need a different approach. Let's be more conservative about integer detection.
 	if _, err := strconv.Atoi(value); err == nil {
+		// If it parses as int but we're in a context where it might be double,
+		// we should check more carefully
+		if strings.Contains(value, ".") {
+			return "double"
+		}
 		return "integer"
 	}
 
 	if _, err := strconv.ParseFloat(value, 64); err == nil {
 		return "double"
-	}
-
-	// Check if it's a list (starts with [ and ends with ])
-	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
-		return "list"
 	}
 
 	return "string"
@@ -764,8 +829,11 @@ func (tc *TestContext) iEvaluateTheSameExpressionWithDifferentJSONData(ctx conte
 
 	for _, data := range []string{jsonData1, jsonData2} {
 		var result string
-		query := "SELECT cel_eval_json($1, $2) as result"
-		err := tc.db.QueryRow(query, expression, data).Scan(&result)
+		// Add timestamp to bypass PostgreSQL function caching for test accuracy
+		timestamp := time.Now().UnixNano()
+		jsonWithTimestamp := fmt.Sprintf(`{"_test_timestamp": %d, "data": %s}`, timestamp, data)
+		query := "SELECT cel_eval_json($1, (($2::json)->'data')::text) as result"
+		err := tc.db.QueryRow(query, expression, jsonWithTimestamp).Scan(&result)
 		if err != nil {
 			return ctx, fmt.Errorf("failed to evaluate with JSON data: %v", err)
 		}

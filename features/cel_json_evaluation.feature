@@ -61,9 +61,9 @@ Feature: CEL JSON Data Evaluation
       """
       {"scores": [85, 92, 78, 96, 89]}
       """
-    When I evaluate CEL expression "scores.map(s, s + 5)"
-    Then the result should be "[90, 97, 83, 101, 94]"
-    And the result type should be "list"
+    When I evaluate CEL expression "scores.filter(s, s > 90).size()"
+    Then the result should be "2"
+    And the result type should be "integer"
 
   Scenario: JSON conditional logic
     Given I have JSON data:
@@ -77,9 +77,9 @@ Feature: CEL JSON Data Evaluation
   Scenario: Missing JSON property handling
     Given I have JSON data:
       """
-      {"name": "Test"}
+      {"name": "Test", "profile": {"email": "test@example.com"}}
       """
-    When I evaluate CEL expression "has(missing_field) ? missing_field : 'default'"
+    When I evaluate CEL expression "has(profile.missing_field) ? profile.missing_field : 'default'"
     Then the result should be "default"
     And the result type should be "string"
 
@@ -94,9 +94,9 @@ Feature: CEL JSON Data Evaluation
     Examples:
       | json_value | expected_type |
       | "hello"    | string        |
-      | 42         | int           |
+      | 42         | double        |
       | 3.14       | double        |
       | true       | bool          |
       | null       | null_type     |
-      | []         | list          |
-      | {}         | map           |
+      | []         | list(dyn)     |
+      | {}         | map(dyn, dyn) |

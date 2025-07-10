@@ -38,10 +38,12 @@ go.work.sum
 *.dll
 pg_cel_go.a
 pg_cel_go.h
+pg_cel.h
 pg_wrapper.o
 
 # Distribution packages
 dist/
+pg-cel-*/
 *.tar.gz
 *.zip
 

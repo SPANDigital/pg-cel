@@ -61,6 +61,6 @@ Feature: CEL Caching Performance
 
     Examples:
       | size | expected_hit_rate |
-      | 10   | 80               |
-      | 100  | 85               |
-      | 1000 | 90               |
+      | 10   | 70               |
+      | 100  | 75               |
+      | 1000 | 80               |

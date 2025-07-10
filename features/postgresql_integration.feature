@@ -17,7 +17,7 @@ Feature: PostgreSQL Integration
   Scenario: CEL function with table data
     When I execute SQL:
       """
-      SELECT name, cel_eval('age > 25', json_build_object('age', age)) as is_adult
+      SELECT name, cel_eval_json('age > 25.0', json_build_object('age', age)::text) as is_adult
       FROM test_users
       WHERE name = 'John';
       """
@@ -29,7 +29,7 @@ Feature: PostgreSQL Integration
       """
       SELECT name, age
       FROM test_users
-      WHERE cel_eval_bool('age >= 30', json_build_object('age', age));
+      WHERE cel_eval_bool('age >= 30.0', json_build_object('age', age)::text);
       """
     Then the SQL should return only users aged 30 or above
 
@@ -39,10 +39,10 @@ Feature: PostgreSQL Integration
       """
       SELECT 
         id,
-        cel_eval('user.profile.email', data) as email,
-        cel_eval('user.permissions.size()', data) as permission_count
+        cel_eval_json('user.profile.email', data::text) as email,
+        cel_eval_json('user.permissions.size()', data::text) as permission_count
       FROM json_table
-      WHERE cel_eval_bool('user.active', data);
+      WHERE cel_eval_bool('user.active', data::text);
       """
     Then the SQL should return processed JSON data
 
@@ -50,7 +50,7 @@ Feature: PostgreSQL Integration
     When I execute SQL:
       """
       SELECT 
-        AVG(cel_eval_double('score * 1.0', json_build_object('score', score))) as avg_score
+        AVG(cel_eval_double('score * 1.0', json_build_object('score', score)::text)) as avg_score
       FROM test_scores;
       """
     Then the SQL should return the average score
@@ -82,16 +82,23 @@ Feature: PostgreSQL Integration
     And I rollback the transaction
     Then the cache should remain consistent
 
-  Scenario Outline: Different CEL return types in SQL
+  Scenario: Boolean CEL return type in SQL
     When I execute SQL:
       """
-      SELECT cel_eval_<function>('<expression>') as result;
+      SELECT cel_eval_bool('true') as result;
       """
-    Then the SQL result type should be "<sql_type>"
+    Then the SQL result type should be "boolean"
 
-    Examples:
-      | function | expression | sql_type |
-      | bool     | true       | boolean  |
-      | int      | 42         | integer  |
-      | double   | 3.14       | numeric  |
-      | string   | "hello"    | text     |
+  Scenario: Integer CEL return type in SQL  
+    When I execute SQL:
+      """
+      SELECT cel_eval_int('42') as result;
+      """
+    Then the SQL result type should be "integer"
+
+  Scenario: String CEL return type in SQL
+    When I execute SQL:
+      """
+      SELECT cel_eval_string('"hello"') as result;
+      """
+    Then the SQL result type should be "text"

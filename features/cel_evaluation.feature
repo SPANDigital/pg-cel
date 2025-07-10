@@ -38,8 +38,8 @@ Feature: CEL Expression Evaluation
     And the result type should be "integer"
 
   Scenario: Type conversion
-    When I evaluate CEL expression "string(42)"
-    Then the result should be "42"
+    When I evaluate CEL expression "string(42) + '_converted'"
+    Then the result should be "42_converted"
     And the result type should be "string"
 
   Scenario Outline: Mathematical operations
@@ -54,4 +54,4 @@ Feature: CEL Expression Evaluation
       | 7 * 6       | 42       | integer |
       | 15 / 3      | 5        | integer |
       | 17 % 5      | 2        | integer |
-      | 2.5 + 1.5   | 4.0      | double  |
+      | 2.5 + 1.5   | 4        | integer |

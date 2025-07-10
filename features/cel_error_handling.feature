@@ -19,7 +19,7 @@ Feature: CEL Error Handling
   Scenario: Type mismatch
     When I evaluate CEL expression "1 + 'string'"
     Then I should receive a compilation error
-    And the error message should contain "type"
+    And the error message should contain "overload"
 
   Scenario: Division by zero
     When I evaluate CEL expression "10 / 0"

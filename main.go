@@ -8,16 +8,16 @@ import (
 	"log"
 	"sort"
 
-	"github.com/dgraph-io/ristretto"
+	"github.com/dgraph-io/ristretto/v2"
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/ext"
 )
 
 // Ristretto cache for compiled CEL programs
-var programCache *ristretto.Cache
+var programCache *ristretto.Cache[string, cel.Program]
 
 // Ristretto cache for parsed JSON data
-var jsonCache *ristretto.Cache
+var jsonCache *ristretto.Cache[string, map[string]any]
 
 // Initialize caches with configurable sizes
 //
@@ -30,20 +30,22 @@ func pg_init_caches(programCacheMB int, jsonCacheMB int) {
 	jsonCacheSize := int64(jsonCacheMB) * 1024 * 1024
 
 	// Initialize program cache
-	programCache, err = ristretto.NewCache(&ristretto.Config{
+	programCache, err = ristretto.NewCache(&ristretto.Config[string, cel.Program]{
 		NumCounters: 1e7,              // number of keys to track frequency of (10M)
 		MaxCost:     programCacheSize, // maximum cost of cache (configurable)
 		BufferItems: 64,               // number of keys per Get buffer
+		Metrics:     true,             // Enable metrics tracking
 	})
 	if err != nil {
 		log.Fatalf("Failed to create program cache: %v", err)
 	}
 
 	// Initialize JSON cache
-	jsonCache, err = ristretto.NewCache(&ristretto.Config{
+	jsonCache, err = ristretto.NewCache(&ristretto.Config[string, map[string]any]{
 		NumCounters: 1e6,           // number of keys to track frequency of (1M)
 		MaxCost:     jsonCacheSize, // maximum cost of cache (configurable)
 		BufferItems: 64,            // number of keys per Get buffer
+		Metrics:     true,          // Enable metrics tracking
 	})
 	if err != nil {
 		log.Fatalf("Failed to create JSON cache: %v", err)
@@ -133,7 +135,7 @@ func addReferenceVars(envOpts []cel.EnvOption, jsonData map[string]any) []cel.En
 			// Add the top-level object
 			celType := getCELType(value)
 			envOpts = append(envOpts, cel.Variable(key, celType))
-			
+
 			// Recursively handle nested objects if needed
 			for _, nestedValue := range nestedMap {
 				if _, ok := nestedValue.(map[string]any); ok {
@@ -179,7 +181,7 @@ func pg_cel_eval(expressionStr *C.char, dataStr *C.char) *C.char {
 
 	// Try to get compiled program from cache
 	if cachedProgram, found := programCache.Get(exprString); found {
-		prg := cachedProgram.(cel.Program)
+		prg := cachedProgram
 
 		// Parse data as simple environment
 		var env map[string]any
@@ -226,6 +228,8 @@ func pg_cel_eval(expressionStr *C.char, dataStr *C.char) *C.char {
 
 	// Cache the compiled program
 	programCache.Set(exprString, prg, 1)
+	// Wait for cache operation to complete
+	programCache.Wait()
 
 	// Parse data as simple environment
 	var env map[string]any
@@ -264,7 +268,7 @@ func pg_cel_eval_json(expressionStr *C.char, jsonData *C.char) *C.char {
 	if jsonString != "" && jsonString != "{}" {
 		// Try to get parsed JSON from cache
 		if cachedEnv, found := jsonCache.Get(jsonString); found {
-			env = cachedEnv.(map[string]any)
+			env = cachedEnv
 		} else {
 			// Parse JSON (cache miss)
 			env = make(map[string]any)
@@ -279,6 +283,8 @@ func pg_cel_eval_json(expressionStr *C.char, jsonData *C.char) *C.char {
 				cost = 1
 			}
 			jsonCache.Set(jsonString, env, cost)
+			// Wait for cache operation to complete
+			jsonCache.Wait()
 		}
 	} else {
 		env = map[string]any{}
@@ -290,7 +296,7 @@ func pg_cel_eval_json(expressionStr *C.char, jsonData *C.char) *C.char {
 	// Try to get compiled program from cache
 	var prg cel.Program
 	if cachedProgram, found := programCache.Get(cacheKey); found {
-		prg = cachedProgram.(cel.Program)
+		prg = cachedProgram
 	} else {
 		// Create dynamic CEL environment with JSON variables
 		celEnv, err := createDynamicCELEnv(env)
@@ -315,6 +321,8 @@ func pg_cel_eval_json(expressionStr *C.char, jsonData *C.char) *C.char {
 
 		// Cache the compiled program with the composite key
 		programCache.Set(cacheKey, prg, 1)
+		// Wait for cache operation to complete
+		programCache.Wait()
 	}
 
 	// Execute the expression with the parsed JSON environment
@@ -337,18 +345,16 @@ func pg_cel_compile_check(expressionStr *C.char) *C.char {
 	// Create CEL environment
 	celEnv, err := createCELEnv()
 	if err != nil {
-		errorMsg := fmt.Sprintf("CEL environment creation error: %v", err)
-		return C.CString(errorMsg)
+		return C.CString("false")
 	}
 
 	// Try to compile the expression
 	_, issues := celEnv.Compile(exprString)
 	if issues != nil && issues.Err() != nil {
-		errorMsg := fmt.Sprintf("Invalid CEL expression: %v", issues.Err())
-		return C.CString(errorMsg)
+		return C.CString("false")
 	}
 
-	return C.CString("OK")
+	return C.CString("true")
 }
 
 //export pg_cel_cache_stats
@@ -366,6 +372,7 @@ func pg_cel_cache_stats() *C.char {
 			"program_sets_rejected": programMetrics.SetsRejected(),
 			"program_gets_kept":     programMetrics.GetsKept(),
 			"program_gets_dropped":  programMetrics.GetsDropped(),
+			"program_entries":       programMetrics.KeysAdded(), // Add missing entries count
 		}
 
 		if jsonCache != nil {
@@ -378,6 +385,7 @@ func pg_cel_cache_stats() *C.char {
 			stats["json_sets_rejected"] = jsonMetrics.SetsRejected()
 			stats["json_gets_kept"] = jsonMetrics.GetsKept()
 			stats["json_gets_dropped"] = jsonMetrics.GetsDropped()
+			stats["json_entries"] = jsonMetrics.KeysAdded() // Add missing entries count
 		}
 	}
 

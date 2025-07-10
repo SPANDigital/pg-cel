@@ -40,23 +40,42 @@ func NewTestContext() *TestContext {
 func (tc *TestContext) pgCelExtensionIsLoaded(ctx context.Context) (context.Context, error) {
 	var err error
 
-	// Get database connection parameters
-	dbUser := os.Getenv("POSTGRES_USER")
+	// Get database connection parameters from environment (CI/CD) or defaults (local)
+	dbHost := os.Getenv("PGHOST")
+	if dbHost == "" {
+		dbHost = "localhost"
+	}
+
+	dbPort := os.Getenv("PGPORT")
+	if dbPort == "" {
+		dbPort = "5432"
+	}
+
+	dbUser := os.Getenv("PGUSER")
 	if dbUser == "" {
-		currentUser, err := user.Current()
-		if err != nil {
-			dbUser = "postgres" // fallback
-		} else {
-			dbUser = currentUser.Username
+		dbUser = os.Getenv("POSTGRES_USER")
+		if dbUser == "" {
+			currentUser, err := user.Current()
+			if err != nil {
+				dbUser = "postgres" // fallback
+			} else {
+				dbUser = currentUser.Username
+			}
 		}
 	}
 
+	dbPassword := os.Getenv("PGPASSWORD")
+	
 	dbName := os.Getenv("TEST_DB")
 	if dbName == "" {
 		dbName = "test_pgcel"
 	}
 
-	connStr := fmt.Sprintf("user=%s dbname=%s sslmode=disable", dbUser, dbName)
+	// Build connection string with all parameters
+	connStr := fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=disable", dbHost, dbPort, dbUser, dbName)
+	if dbPassword != "" {
+		connStr += fmt.Sprintf(" password=%s", dbPassword)
+	}
 
 	// Connect to PostgreSQL test database
 	tc.db, err = sql.Open("postgres", connStr)
@@ -869,9 +888,41 @@ func (tc *TestContext) iStartANewDatabaseSession(ctx context.Context) (context.C
 		tc.db.Close()
 	}
 
+	// Get database connection parameters (same as in pgCelExtensionIsLoaded)
+	dbHost := os.Getenv("PGHOST")
+	if dbHost == "" {
+		dbHost = "localhost"
+	}
+
+	dbPort := os.Getenv("PGPORT")
+	if dbPort == "" {
+		dbPort = "5432"
+	}
+
+	dbUser := os.Getenv("PGUSER")
+	if dbUser == "" {
+		dbUser = os.Getenv("POSTGRES_USER")
+		if dbUser == "" {
+			dbUser = "postgres"
+		}
+	}
+
+	dbPassword := os.Getenv("PGPASSWORD")
+	
+	dbName := os.Getenv("TEST_DB")
+	if dbName == "" {
+		dbName = "test_pgcel"
+	}
+
+	// Build connection string with all parameters
+	connStr := fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=disable", dbHost, dbPort, dbUser, dbName)
+	if dbPassword != "" {
+		connStr += fmt.Sprintf(" password=%s", dbPassword)
+	}
+
 	// Open a new connection
 	var err error
-	tc.db, err = sql.Open("postgres", "user=postgres dbname=test_pgcel sslmode=disable")
+	tc.db, err = sql.Open("postgres", connStr)
 	if err != nil {
 		return ctx, fmt.Errorf("failed to open new database session: %v", err)
 	}

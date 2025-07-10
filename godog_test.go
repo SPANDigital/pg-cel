@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/user"
 	"strconv"
 	"strings"
 	"time"
@@ -37,8 +39,27 @@ func NewTestContext() *TestContext {
 // Database connection steps
 func (tc *TestContext) pgCelExtensionIsLoaded(ctx context.Context) (context.Context, error) {
 	var err error
+	
+	// Get database connection parameters
+	dbUser := os.Getenv("POSTGRES_USER")
+	if dbUser == "" {
+		currentUser, err := user.Current()
+		if err != nil {
+			dbUser = "postgres" // fallback
+		} else {
+			dbUser = currentUser.Username
+		}
+	}
+	
+	dbName := os.Getenv("TEST_DB")
+	if dbName == "" {
+		dbName = "test_pgcel"
+	}
+	
+	connStr := fmt.Sprintf("user=%s dbname=%s sslmode=disable", dbUser, dbName)
+	
 	// Connect to PostgreSQL test database
-	tc.db, err = sql.Open("postgres", "user=postgres dbname=test_pgcel sslmode=disable")
+	tc.db, err = sql.Open("postgres", connStr)
 	if err != nil {
 		return ctx, fmt.Errorf("failed to connect to database: %v", err)
 	}

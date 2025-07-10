@@ -22,7 +22,7 @@ fi
 
 # Set default database name
 TEST_DB="${TEST_DB:-test_pgcel}"
-POSTGRES_USER="${POSTGRES_USER:-postgres}"
+POSTGRES_USER="${POSTGRES_USER:-$(whoami)}"
 
 echo -e "${YELLOW}Database: $TEST_DB${NC}"
 echo -e "${YELLOW}User: $POSTGRES_USER${NC}"

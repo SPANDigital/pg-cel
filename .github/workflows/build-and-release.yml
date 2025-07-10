@@ -92,31 +92,29 @@ jobs:
         
     - name: Test build
       run: |
-        # Stop default PostgreSQL service and start the correct version
-        sudo systemctl stop postgresql || true
-        sleep 2
-        
-        # Try different service names for the specific PostgreSQL version
-        if sudo systemctl start postgresql@${{ matrix.pg_version }}-main; then
-          echo "Started postgresql@${{ matrix.pg_version }}-main"
-          sleep 3
-        elif sudo systemctl start postgresql; then
-          echo "Started default postgresql service"
-          sleep 3
-        else
-          echo "Failed to start PostgreSQL service"
-          exit 1
-        fi
-        
-        # Set up proper environment for the specific PostgreSQL version
+        # Initialize and run PostgreSQL with the correct version
         export PATH="/usr/lib/postgresql/${{ matrix.pg_version }}/bin:$PATH"
         
-        # Wait for PostgreSQL to be ready and create test database
-        sudo -u postgres createdb test_db
+        # Initialize a fresh PostgreSQL data directory for this version
+        sudo mkdir -p /tmp/pg_data_${{ matrix.pg_version }}
+        sudo chown postgres:postgres /tmp/pg_data_${{ matrix.pg_version }}
         
-        # Test the extension
-        sudo -u postgres psql -d test_db -c "CREATE EXTENSION pg_cel;"
-        sudo -u postgres psql -d test_db -c "SELECT cel_eval('2 + 3');"
+        # Initialize the database with the correct version
+        sudo -u postgres /usr/lib/postgresql/${{ matrix.pg_version }}/bin/initdb -D /tmp/pg_data_${{ matrix.pg_version }}
+        
+        # Start PostgreSQL directly with the correct version
+        sudo -u postgres /usr/lib/postgresql/${{ matrix.pg_version }}/bin/pg_ctl -D /tmp/pg_data_${{ matrix.pg_version }} -l /tmp/pg_log_${{ matrix.pg_version }} start
+        
+        # Wait for PostgreSQL to be ready
+        sleep 5
+        
+        # Create test database and test the extension
+        sudo -u postgres /usr/lib/postgresql/${{ matrix.pg_version }}/bin/createdb -p 5432 test_db
+        sudo -u postgres /usr/lib/postgresql/${{ matrix.pg_version }}/bin/psql -p 5432 -d test_db -c "CREATE EXTENSION pg_cel;"
+        sudo -u postgres /usr/lib/postgresql/${{ matrix.pg_version }}/bin/psql -p 5432 -d test_db -c "SELECT cel_eval('2 + 3');"
+        
+        # Stop the PostgreSQL instance
+        sudo -u postgres /usr/lib/postgresql/${{ matrix.pg_version }}/bin/pg_ctl -D /tmp/pg_data_${{ matrix.pg_version }} stop
         
     - name: Package artifacts
       run: |

@@ -208,6 +208,8 @@ export POSTGRES_USER=your_username     # PostgreSQL user
 
 The BDD testing implementation provides a solid foundation for comprehensive testing of pg-cel. With 18 scenarios already passing and a clear roadmap for addressing the remaining issues, this establishes pg-cel as a well-tested, reliable PostgreSQL extension.
 
+**Detailed Analysis**: See `BDD_TESTING_ROOT_CAUSE_ANALYSIS.md` for comprehensive root cause analysis, including specific code examples and implementation recommendations for each failing scenario.
+
 The test framework is production-ready and will significantly improve code quality, reduce bugs, and accelerate development velocity going forward.
 
 ---

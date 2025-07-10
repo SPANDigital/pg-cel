@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 
 	"github.com/dgraph-io/ristretto"
 	"github.com/google/cel-go/cel"
@@ -74,6 +75,95 @@ func createCELEnv() (*cel.Env, error) {
 		ext.Encoders(),
 		ext.Sets(),
 	)
+}
+
+// getCELType converts Go values to appropriate CEL types
+func getCELType(value any) *cel.Type {
+	switch value.(type) {
+	case string:
+		return cel.StringType
+	case int, int32, int64:
+		return cel.IntType
+	case float32, float64:
+		return cel.DoubleType
+	case bool:
+		return cel.BoolType
+	case []any:
+		return cel.ListType(cel.DynType)
+	case map[string]any:
+		return cel.MapType(cel.StringType, cel.DynType)
+	case nil:
+		return cel.NullType
+	default:
+		return cel.DynType
+	}
+}
+
+// createDynamicCELEnv creates a CEL environment with JSON variables declared
+func createDynamicCELEnv(jsonData map[string]any) (*cel.Env, error) {
+	var envOpts []cel.EnvOption
+
+	// Add JSON variables as CEL variables
+	for key, value := range jsonData {
+		celType := getCELType(value)
+		envOpts = append(envOpts, cel.Variable(key, celType))
+	}
+
+	// Add extensions
+	envOpts = append(envOpts,
+		ext.Strings(),
+		ext.Math(),
+		ext.Lists(),
+		ext.Bindings(),
+		ext.Protos(),
+		ext.Encoders(),
+		ext.Sets(),
+	)
+
+	return cel.NewEnv(envOpts...)
+}
+
+// addReferenceVars handles dotted notation like "user.name" by adding reference variables
+func addReferenceVars(envOpts []cel.EnvOption, jsonData map[string]any) []cel.EnvOption {
+	// For nested objects, we need to add the top-level references
+	for key, value := range jsonData {
+		if nestedMap, ok := value.(map[string]any); ok {
+			// Add the top-level object
+			celType := getCELType(value)
+			envOpts = append(envOpts, cel.Variable(key, celType))
+			
+			// Recursively handle nested objects if needed
+			for _, nestedValue := range nestedMap {
+				if _, ok := nestedValue.(map[string]any); ok {
+					nestedCelType := getCELType(nestedValue)
+					// We already have the parent, so this is implicit
+					_ = nestedCelType
+				}
+			}
+		}
+	}
+	return envOpts
+}
+
+// createCacheKey generates a cache key that includes both expression and JSON structure
+func createCacheKey(expression string, jsonData map[string]any) string {
+	// Simple approach: include the JSON keys in the cache key
+	// This ensures different JSON structures get different compiled programs
+	if len(jsonData) == 0 {
+		return expression
+	}
+
+	// Create a deterministic key based on the JSON structure
+	var keys []string
+	for key := range jsonData {
+		keys = append(keys, key)
+	}
+
+	// Sort keys for deterministic cache keys
+	// Note: In production, you'd want to use a proper sorting algorithm
+	sort.Strings(keys)
+	keyStr := fmt.Sprintf("%v", keys)
+	return fmt.Sprintf("%s|%s", expression, keyStr)
 }
 
 //export pg_cel_eval
@@ -167,37 +257,7 @@ func pg_cel_eval_json(expressionStr *C.char, jsonData *C.char) *C.char {
 	exprString := C.GoString(expressionStr)
 	jsonString := C.GoString(jsonData)
 
-	// Try to get compiled program from cache
-	var prg cel.Program
-	if cachedProgram, found := programCache.Get(exprString); found {
-		prg = cachedProgram.(cel.Program)
-	} else {
-		// Create CEL environment
-		celEnv, err := createCELEnv()
-		if err != nil {
-			errorMsg := fmt.Sprintf("CEL environment creation error: %v", err)
-			return C.CString(errorMsg)
-		}
-
-		// Compile the expression (cache miss)
-		ast, issues := celEnv.Compile(exprString)
-		if issues != nil && issues.Err() != nil {
-			errorMsg := fmt.Sprintf("CEL compilation error: %v", issues.Err())
-			return C.CString(errorMsg)
-		}
-
-		var err2 error
-		prg, err2 = celEnv.Program(ast)
-		if err2 != nil {
-			errorMsg := fmt.Sprintf("CEL program creation error: %v", err2)
-			return C.CString(errorMsg)
-		}
-
-		// Cache the compiled program
-		programCache.Set(exprString, prg, 1)
-	}
-
-	// Parse JSON data with caching
+	// Parse JSON data first to determine variable structure
 	var env map[string]any
 	if jsonString != "" && jsonString != "{}" {
 		// Try to get parsed JSON from cache
@@ -222,7 +282,40 @@ func pg_cel_eval_json(expressionStr *C.char, jsonData *C.char) *C.char {
 		env = map[string]any{}
 	}
 
-	// Execute the expression
+	// Create cache key that includes JSON structure
+	cacheKey := createCacheKey(exprString, env)
+
+	// Try to get compiled program from cache
+	var prg cel.Program
+	if cachedProgram, found := programCache.Get(cacheKey); found {
+		prg = cachedProgram.(cel.Program)
+	} else {
+		// Create dynamic CEL environment with JSON variables
+		celEnv, err := createDynamicCELEnv(env)
+		if err != nil {
+			errorMsg := fmt.Sprintf("CEL environment creation error: %v", err)
+			return C.CString(errorMsg)
+		}
+
+		// Compile the expression (cache miss)
+		ast, issues := celEnv.Compile(exprString)
+		if issues != nil && issues.Err() != nil {
+			errorMsg := fmt.Sprintf("CEL compilation error: %v", issues.Err())
+			return C.CString(errorMsg)
+		}
+
+		var err2 error
+		prg, err2 = celEnv.Program(ast)
+		if err2 != nil {
+			errorMsg := fmt.Sprintf("CEL program creation error: %v", err2)
+			return C.CString(errorMsg)
+		}
+
+		// Cache the compiled program with the composite key
+		programCache.Set(cacheKey, prg, 1)
+	}
+
+	// Execute the expression with the parsed JSON environment
 	out, _, err := prg.Eval(env)
 	if err != nil {
 		errorMsg := fmt.Sprintf("CEL evaluation error: %v", err)

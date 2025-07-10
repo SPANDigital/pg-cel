@@ -100,8 +100,17 @@ func (tc *TestContext) iEvaluateCELExpression(ctx context.Context, expression st
 	tc.lastError = nil
 
 	var result sql.NullString
-	query := "SELECT cel_eval($1) as result"
-	err := tc.db.QueryRow(query, expression).Scan(&result)
+	var query string
+	var err error
+
+	// Use cel_eval_json if JSON data is available, otherwise use cel_eval
+	if tc.jsonData != "" {
+		query = "SELECT cel_eval_json($1, $2) as result"
+		err = tc.db.QueryRow(query, expression, tc.jsonData).Scan(&result)
+	} else {
+		query = "SELECT cel_eval($1) as result"
+		err = tc.db.QueryRow(query, expression).Scan(&result)
+	}
 
 	if err != nil {
 		tc.lastError = err
@@ -135,8 +144,17 @@ func (tc *TestContext) iEvaluateInvalidCELExpression(ctx context.Context, expres
 	tc.lastError = nil
 
 	var result sql.NullString
-	query := "SELECT cel_eval($1) as result"
-	err := tc.db.QueryRow(query, expression).Scan(&result)
+	var query string
+	var err error
+
+	// Use cel_eval_json if JSON data is available, otherwise use cel_eval
+	if tc.jsonData != "" {
+		query = "SELECT cel_eval_json($1, $2) as result"
+		err = tc.db.QueryRow(query, expression, tc.jsonData).Scan(&result)
+	} else {
+		query = "SELECT cel_eval($1) as result"
+		err = tc.db.QueryRow(query, expression).Scan(&result)
+	}
 
 	// We expect an error for invalid expressions
 	tc.lastError = err
@@ -851,6 +869,12 @@ func (tc *TestContext) cleanup() {
 	if tc.db != nil {
 		tc.db.Close()
 	}
+	// Clear JSON data between scenarios to avoid cross-contamination
+	tc.jsonData = ""
+	tc.lastResult = ""
+	tc.lastResultType = ""
+	tc.lastError = nil
+	tc.sqlResults = make([]map[string]interface{}, 0)
 }
 
 // ScenarioInitializer initializes the step definitions

@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [ main, develop ]
@@ -98,6 +101,8 @@ jobs:
 
   test-macos:
     runs-on: macos-latest
+    permissions:
+      contents: read
     
     steps:
     - uses: actions/checkout@v4

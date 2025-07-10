@@ -61,4 +61,30 @@ else
 	rm -f pg_cel_go.a pg_cel_go.h pg_wrapper.o $(MODULE_big)$(DLSUFFIX)
 endif
 
-.PHONY: clean
+# BDD Testing targets
+bdd-setup:
+	@echo "Setting up BDD test environment..."
+	@./setup_bdd_tests.sh
+
+bdd-test: bdd-setup
+	@echo "Running BDD tests..."
+	@go test -v ./godog_main_test.go ./godog_test.go
+
+bdd-test-pretty:
+	@echo "Running BDD tests with pretty format..."
+	@go test -v -godog.format=pretty ./godog_main_test.go ./godog_test.go
+
+bdd-test-junit:
+	@echo "Running BDD tests with JUnit output..."
+	@go test -v -godog.format=junit:bdd-results.xml ./godog_main_test.go ./godog_test.go
+
+bdd-test-coverage:
+	@echo "Running BDD tests with coverage..."
+	@go test -v -coverprofile=bdd-coverage.out ./godog_main_test.go ./godog_test.go
+
+bdd-clean:
+	@echo "Cleaning up BDD test artifacts..."
+	@dropdb --if-exists test_pgcel 2>/dev/null || true
+	@rm -f bdd-results.xml bdd-coverage.out
+
+.PHONY: clean bdd-setup bdd-test bdd-test-pretty bdd-test-junit bdd-test-coverage bdd-clean

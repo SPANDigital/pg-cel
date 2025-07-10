@@ -1,0 +1,125 @@
+name: BDD Tests
+
+on:
+  push:
+    branches: [ feature/godog-testing ]
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'features/**'
+      - 'godog_*.go'
+      - 'setup_bdd_tests.sh'
+
+jobs:
+  bdd-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        postgres-version: [14, 15, 16, 17]
+        go-version: [1.24]
+
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres-version }}
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_pgcel
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go-version }}
+
+    - name: Install PostgreSQL client and dev packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client postgresql-server-dev-${{ matrix.postgres-version }}
+
+    - name: Set PG_CONFIG environment
+      run: |
+        echo "PG_CONFIG=/usr/lib/postgresql/${{ matrix.postgres-version }}/bin/pg_config" >> $GITHUB_ENV
+
+    - name: Install Go dependencies
+      run: go mod download
+
+    - name: Build pg-cel extension
+      run: |
+        export PG_CONFIG=/usr/lib/postgresql/${{ matrix.postgres-version }}/bin/pg_config
+        ./build.sh
+
+    - name: Install pg-cel extension
+      run: |
+        export PG_CONFIG=/usr/lib/postgresql/${{ matrix.postgres-version }}/bin/pg_config
+        sudo make install
+
+    - name: Setup test database
+      env:
+        PGHOST: localhost
+        PGPORT: 5432
+        PGUSER: postgres
+        PGPASSWORD: postgres
+        TEST_DB: test_pgcel
+      run: |
+        # Create test database
+        createdb test_pgcel
+        
+        # Enable pg-cel extension
+        psql -d test_pgcel -c "CREATE EXTENSION pg_cel;"
+        
+        # Verify extension works
+        psql -d test_pgcel -c "SELECT cel_eval('1 + 1') as test;"
+
+    - name: Run BDD tests
+      env:
+        PGHOST: localhost
+        PGPORT: 5432
+        PGUSER: postgres
+        PGPASSWORD: postgres
+        TEST_DB: test_pgcel
+      run: |
+        go test -v -godog.format=pretty ./godog_main_test.go ./godog_test.go
+
+    - name: Run BDD tests with JUnit output
+      env:
+        PGHOST: localhost
+        PGPORT: 5432
+        PGUSER: postgres
+        PGPASSWORD: postgres
+        TEST_DB: test_pgcel
+      run: |
+        go test -v -godog.format=junit:bdd-results.xml ./godog_main_test.go ./godog_test.go
+
+    - name: Upload BDD test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: bdd-test-results-pg${{ matrix.postgres-version }}
+        path: bdd-results.xml
+
+    - name: Run BDD tests with coverage
+      env:
+        PGHOST: localhost
+        PGPORT: 5432
+        PGUSER: postgres
+        PGPASSWORD: postgres
+        TEST_DB: test_pgcel
+      run: |
+        go test -v -coverprofile=bdd-coverage.out ./godog_main_test.go ./godog_test.go
+
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: bdd-coverage-pg${{ matrix.postgres-version }}
+        path: bdd-coverage.out

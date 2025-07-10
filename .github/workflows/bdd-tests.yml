@@ -95,6 +95,13 @@ jobs:
         echo "Platform: $(uname -s)"
         echo "Architecture: $(uname -m)"
         
+        # Verify PostgreSQL configuration
+        echo "PostgreSQL version check:"
+        $PG_CONFIG --version
+        echo "PostgreSQL directories:"
+        echo "pkglibdir: $($PG_CONFIG --pkglibdir)"
+        echo "sharedir: $($PG_CONFIG --sharedir)"
+        
         # Verify Go toolchain compatibility
         echo "Go environment:"
         go env | grep -E "(GOOS|GOARCH|CGO|CC)"
@@ -117,9 +124,10 @@ jobs:
         }
         ls -la test.a 2>/dev/null && rm test.a || echo "Go archive test cleanup"
         
-        # Run actual build with verbose output
+        # Run actual build with explicit PG_CONFIG passed to make
         echo "Starting actual build..."
-        ./build.sh build
+        make clean PG_CONFIG=$PG_CONFIG
+        make PG_CONFIG=$PG_CONFIG
 
     - name: Install pg-cel extension
       run: |
@@ -135,14 +143,22 @@ jobs:
           exit 1
         }
         
-        # Install with verbose output
-        echo "Running make install..."
-        sudo make install V=1 || {
+        # Verify PG_CONFIG is correct version
+        echo "Verifying PG_CONFIG points to correct PostgreSQL version:"
+        echo "PG_CONFIG=$PG_CONFIG"
+        $PG_CONFIG --version
+        echo "Extension install paths:"
+        echo "pkglibdir: $($PG_CONFIG --pkglibdir)"
+        echo "sharedir: $($PG_CONFIG --sharedir)"
+        
+        # Install with explicit PG_CONFIG for the Makefile
+        echo "Running make install with explicit PG_CONFIG..."
+        sudo make install PG_CONFIG=$PG_CONFIG V=1 || {
           echo "Install failed, checking makefile variables:"
-          make -n install
-          echo "PostgreSQL directories:"
-          $PG_CONFIG --pkglibdir
-          $PG_CONFIG --sharedir
+          make -n install PG_CONFIG=$PG_CONFIG
+          echo "Available PostgreSQL directories:"
+          find /usr/lib/postgresql -name "pg_config" 2>/dev/null
+          find /usr/share/postgresql -name "extension" -type d 2>/dev/null
           exit 1
         }
         

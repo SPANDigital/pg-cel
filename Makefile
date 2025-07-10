@@ -68,15 +68,15 @@ bdd-setup:
 
 bdd-test: bdd-setup
 	@echo "Running BDD tests..."
-	@go test -v ./godog_main_test.go ./godog_test.go
+	@go test -v godog_main_test.go godog_test.go
 
 bdd-test-pretty:
 	@echo "Running BDD tests with pretty format..."
-	@go test -v -godog.format=pretty ./godog_main_test.go ./godog_test.go
+	@go test -v -godog.format=pretty godog_main_test.go godog_test.go
 
 bdd-test-junit:
 	@echo "Running BDD tests with JUnit output..."
-	@go test -v -godog.format=junit:bdd-results.xml ./godog_main_test.go ./godog_test.go
+	@go test -v -godog.format=junit:bdd-results.xml godog_main_test.go godog_test.go
 
 bdd-test-coverage:
 	@echo "Running BDD tests with coverage..."

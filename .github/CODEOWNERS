@@ -1,0 +1,46 @@
+# CODEOWNERS file for pg-cel
+# 
+# This file defines the code owners for different parts of the repository.
+# Code owners are automatically requested for review when someone opens a pull request
+# that modifies code in a file they own.
+#
+# More info: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global owners - these users will be requested for review on all PRs
+* @SPANDigital/pg-cel-maintainers
+
+# Core Go code
+main.go @SPANDigital/pg-cel-maintainers
+go.mod @SPANDigital/pg-cel-maintainers
+go.sum @SPANDigital/pg-cel-maintainers
+
+# C extension code
+pg_wrapper.c @SPANDigital/pg-cel-maintainers
+pg_cel.h @SPANDigital/pg-cel-maintainers
+
+# PostgreSQL extension files
+pg_cel.control @SPANDigital/pg-cel-maintainers
+pg_cel--*.sql @SPANDigital/pg-cel-maintainers
+
+# Build system
+Makefile @SPANDigital/pg-cel-maintainers
+build.sh @SPANDigital/pg-cel-maintainers
+manage_version.sh @SPANDigital/pg-cel-maintainers
+
+# CI/CD workflows
+.github/workflows/ @SPANDigital/pg-cel-maintainers
+
+# Documentation
+README.md @SPANDigital/pg-cel-maintainers
+CONTRIBUTING.md @SPANDigital/pg-cel-maintainers
+INSTALL.md @SPANDigital/pg-cel-maintainers
+EXAMPLES.md @SPANDigital/pg-cel-maintainers
+
+# Tests
+test.sql @SPANDigital/pg-cel-maintainers
+test-gha.sh @SPANDigital/pg-cel-maintainers
+
+# Configuration and project files
+.github/ @SPANDigital/pg-cel-maintainers
+.gitignore @SPANDigital/pg-cel-maintainers
+LICENSE @SPANDigital/pg-cel-maintainers

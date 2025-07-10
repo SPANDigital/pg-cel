@@ -1,0 +1,65 @@
+---
+labels: ["ideas"]
+---
+
+<!-- 
+Use this template to share and discuss ideas that might not be 
+ready for a formal feature request yet. This is a place for 
+brainstorming and community input.
+-->
+
+## Idea Summary
+<!-- Brief description of your idea -->
+
+## Problem or Opportunity
+<!-- What problem does this address or what opportunity does it create? -->
+
+## Initial Thoughts
+<!-- Your initial thoughts on how this might work -->
+
+## Potential Benefits
+<!-- What benefits would this provide? -->
+
+## Potential Challenges
+<!-- What challenges or concerns do you foresee? -->
+
+## Similar Features
+<!-- Are there similar features in other tools or languages? -->
+
+## Community Discussion Points
+<!-- What aspects would you like the community to discuss? -->
+
+- [ ] Technical feasibility
+- [ ] Implementation approaches
+- [ ] Priority and importance
+- [ ] Alternative solutions
+- [ ] Performance implications
+- [ ] Compatibility considerations
+- [ ] User experience impact
+
+## Examples or Mockups
+<!-- If you have examples, mockups, or rough syntax ideas -->
+
+```sql
+-- Hypothetical syntax or usage
+SELECT cel_eval('potential_new_feature()', '{"data": "value"}');
+```
+
+## Research or References
+<!-- Any relevant links, documentation, or research -->
+
+## Looking For
+<!-- What kind of feedback or input are you seeking? -->
+
+- [ ] Initial reactions and thoughts
+- [ ] Technical input from experts
+- [ ] Similar use cases from others
+- [ ] Alternative approaches
+- [ ] Implementation volunteers
+- [ ] Priority feedback
+
+---
+<!-- 
+Once an idea is well-defined and has community support, 
+consider creating a formal Feature Request issue.
+-->

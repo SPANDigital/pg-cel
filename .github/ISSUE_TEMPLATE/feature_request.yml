@@ -1,0 +1,157 @@
+name: Feature Request
+description: Suggest a new feature or enhancement for pg-cel
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please fill out this form to help us understand your request.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm the following before submitting this feature request
+      options:
+        - label: I have searched existing issues to ensure this feature hasn't already been requested
+          required: true
+        - label: I have read the [EXAMPLES.md](../blob/main/EXAMPLES.md) to understand current capabilities
+          required: true
+        - label: This feature aligns with the project's goals and scope
+          required: true
+
+  - type: dropdown
+    id: feature-category
+    attributes:
+      label: Feature Category
+      description: Which category best describes your feature request?
+      options:
+        - New CEL function/operator
+        - Performance improvement
+        - New data type support
+        - PostgreSQL integration enhancement
+        - Caching optimization
+        - Build/deployment improvement
+        - Documentation enhancement
+        - Developer experience
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: feature-summary
+    attributes:
+      label: Feature Summary
+      description: A clear and concise description of the feature you'd like to see
+      placeholder: Briefly describe the feature you're requesting
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem-statement
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve? What's the current pain point?
+      placeholder: |
+        Describe the problem or limitation that this feature would address.
+        For example: "Currently, there's no way to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: Describe your proposed solution in detail
+      placeholder: |
+        Describe how you envision this feature working.
+        Include any specific syntax, behavior, or implementation details.
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: Use Cases
+      description: Provide specific examples of how this feature would be used
+      placeholder: |
+        Provide 2-3 concrete examples of how this feature would be used:
+        
+        1. Use case 1: ...
+        2. Use case 2: ...
+        3. Use case 3: ...
+
+  - type: textarea
+    id: example-syntax
+    attributes:
+      label: Example Usage
+      description: Show what the feature would look like in practice
+      placeholder: |
+        -- Example SQL queries showing how the feature would work
+        SELECT cel_eval('new_function(data)', '{"key": "value"}');
+      render: sql
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority Level
+      description: How important is this feature to you?
+      options:
+        - Low - Nice to have
+        - Medium - Would improve my workflow
+        - High - Blocking or significantly limiting current work
+        - Critical - Cannot proceed without this feature
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Describe any alternative solutions or workarounds you've considered
+      placeholder: |
+        Are there any workarounds you're currently using?
+        Have you considered other approaches to solve this problem?
+
+  - type: textarea
+    id: implementation-notes
+    attributes:
+      label: Implementation Notes
+      description: Do you have any thoughts on how this could be implemented?
+      placeholder: |
+        If you have technical insights about implementation:
+        - Which CEL extensions might be needed
+        - Performance considerations
+        - Potential challenges
+        - Related PostgreSQL features
+
+  - type: checkboxes
+    id: compatibility
+    attributes:
+      label: Compatibility Considerations
+      description: Please check any that apply to your feature request
+      options:
+        - label: This feature should work across all supported PostgreSQL versions (14, 15, 16, 17)
+        - label: This feature should work on both Linux and macOS
+        - label: This feature should maintain backward compatibility
+        - label: This feature may require a major version bump
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Would you like to contribute to implementing this feature?
+      options:
+        - label: I'd be willing to submit a PR to implement this feature
+        - label: I'd be willing to help with testing this feature
+        - label: I'd be willing to help with documentation for this feature
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or examples about the feature request here
+      placeholder: |
+        Any additional context that would help us understand your request:
+        - Links to relevant documentation
+        - Similar features in other tools
+        - Performance requirements
+        - Integration requirements

@@ -128,6 +128,11 @@ jobs:
         
     - name: Install extension
       run: |
+        # Ensure we're using the correct pg_config
+        echo "Using pg_config: $(which pg_config)"
+        echo "PostgreSQL version: $(pg_config --version)"
+        echo "Library directory: $(pg_config --pkglibdir)"
+        echo "Extension directory: $(pg_config --sharedir)/extension"
         make install
         
     - name: Run tests

@@ -71,16 +71,20 @@ jobs:
         
     - name: Install extension
       run: |
-        sudo make install || echo "Make install failed, continuing..."
+        # Ensure we're using the correct pg_config
+        echo "Using pg_config: $(which pg_config)"
+        echo "PostgreSQL version: $(pg_config --version)"
+        echo "Library directory: $(pg_config --pkglibdir)"
+        echo "Extension directory: $(pg_config --sharedir)/extension"
+        sudo make install
         
     - name: Test build
       run: |
         # Start PostgreSQL service
-        sudo systemctl start postgresql || echo "Failed to start PostgreSQL, continuing..."
-        sudo -u postgres createdb test_db || echo "Failed to create database, continuing..."
-        sudo -u postgres psql -d test_db -c "CREATE EXTENSION pg_cel;" || echo "Failed to create extension, continuing..."
-        sudo -u postgres psql -d test_db -c "SELECT cel_eval('2 + 3');" || echo "Failed to run test query, continuing..."
-      continue-on-error: true
+        sudo systemctl start postgresql
+        sudo -u postgres createdb test_db
+        sudo -u postgres psql -d test_db -c "CREATE EXTENSION pg_cel;"
+        sudo -u postgres psql -d test_db -c "SELECT cel_eval('2 + 3');"
         
     - name: Package artifacts
       run: |
@@ -102,7 +106,6 @@ jobs:
       with:
         name: pg-cel-linux-pg${{ matrix.pg_version }}
         path: pg-cel-linux-pg${{ matrix.pg_version }}.tar.gz
-      continue-on-error: true
 
   build-macos:
     runs-on: macos-latest
@@ -164,20 +167,24 @@ jobs:
         
     - name: Install extension
       run: |
-        sudo make install || echo "Make install failed, continuing..."
+        # Ensure we're using the correct pg_config
+        echo "Using pg_config: $(which pg_config)"
+        echo "PostgreSQL version: $(pg_config --version)"
+        echo "Library directory: $(pg_config --pkglibdir)"
+        echo "Extension directory: $(pg_config --sharedir)/extension"
+        make install
         
     - name: Test build
       run: |
         # Initialize and start PostgreSQL more reliably
         mkdir -p /tmp/pgdata
-        initdb -D /tmp/pgdata || echo "initdb failed, continuing..."
-        pg_ctl -D /tmp/pgdata -l /tmp/logfile start || echo "pg_ctl start failed, continuing..."
+        initdb -D /tmp/pgdata
+        pg_ctl -D /tmp/pgdata -l /tmp/logfile start
         sleep 5
-        createdb test_db || echo "createdb failed, continuing..."
-        psql -d test_db -c "CREATE EXTENSION IF NOT EXISTS pg_cel;" || echo "Extension creation failed, continuing..."
-        psql -d test_db -c "SELECT cel_eval('2 + 3');" || echo "Extension test failed, continuing..."
-        pg_ctl -D /tmp/pgdata stop || echo "pg_ctl stop failed, continuing..."
-      continue-on-error: true
+        createdb test_db
+        psql -d test_db -c "CREATE EXTENSION pg_cel;"
+        psql -d test_db -c "SELECT cel_eval('2 + 3');"
+        pg_ctl -D /tmp/pgdata stop
         
     - name: Package artifacts
       run: |
@@ -205,7 +212,6 @@ jobs:
       with:
         name: pg-cel-macos-pg${{ matrix.pg_version }}
         path: pg-cel-macos-pg${{ matrix.pg_version }}.tar.gz
-      continue-on-error: true
 
   test:
     runs-on: ubuntu-latest

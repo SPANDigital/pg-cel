@@ -41,6 +41,7 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: ${{ matrix.go-version }}
+        check-latest: true
 
     - name: Install PostgreSQL client and dev packages
       run: |
@@ -48,6 +49,8 @@ jobs:
         curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
         echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
         sudo apt-get update
+        # Install build dependencies
+        sudo apt-get install -y build-essential gcc make pkg-config
         sudo apt-get install -y postgresql-client postgresql-server-dev-${{ matrix.postgres-version }}
 
     - name: Set PG_CONFIG environment
@@ -61,11 +64,24 @@ jobs:
       run: go mod download
 
     - name: Build pg-cel extension
+      env:
+        CGO_ENABLED: 1
+        CC: gcc
+        V: 1
       run: |
         export PG_CONFIG=/usr/lib/postgresql/${{ matrix.postgres-version }}/bin/pg_config
         echo "Building with PostgreSQL version: ${{ matrix.postgres-version }}"
         echo "PG_CONFIG path: $PG_CONFIG"
         echo "Go version: $(go version)"
+        echo "CGO_ENABLED: $CGO_ENABLED"
+        echo "CC: $CC"
+        echo "Platform: $(uname -s)"
+        echo "Architecture: $(uname -m)"
+        # Test Go build capability
+        echo "Testing Go build..."
+        go build -buildmode=c-archive -o test.a main.go || echo "Go build test failed"
+        ls -la test.a 2>/dev/null && rm test.a || echo "Go archive test not found"
+        # Run actual build
         ./build.sh
 
     - name: Install pg-cel extension

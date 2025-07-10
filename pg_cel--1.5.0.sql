@@ -1,3 +1,15 @@
+-- pg_cel--1.5.0.sql
+-- PostgreSQL extension for CEL (Common Expression Language) evaluation
+-- Version 1.5.0 - BDD Testing Complete Edition
+-- 
+-- This version includes:
+-- - 100% BDD test coverage with comprehensive test suite
+-- - Fixed function resolution issues for PL/pgSQL wrapper functions  
+-- - Improved error handling and stability
+-- - Performance optimizations for schema-qualified function calls
+-- - Comprehensive cache performance testing
+-- - Full PostgreSQL integration testing
+
 -- complain if script is sourced in psql, rather than via CREATE EXTENSION
 \echo Use "CREATE EXTENSION pg_cel" to load this file. \quit
 

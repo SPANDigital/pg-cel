@@ -4,6 +4,8 @@
 
 This is **pg-cel**, a PostgreSQL extension that integrates Google's CEL (Common Expression Language) with PostgreSQL. The extension allows evaluating CEL expressions directly within SQL queries with high-performance caching.
 
+Remember the owner of this repo is SPANDigital
+
 ## Architecture
 
 ### Core Components
@@ -171,6 +173,109 @@ pg_cel.json_cache_size_mb = 128     # Default 64MB
 2. Profile cache key generation (ensure FNV is used)
 3. Verify program compilation isn't happening repeatedly
 4. Check for memory leaks in long-running operations
+
+## PostgreSQL Function Overloading
+
+### Why Function Overloading is Required
+
+pg-cel uses **PostgreSQL function overloading** extensively to provide type-safe and user-friendly SQL interfaces. This is **not code duplication** but a deliberate design pattern required by PostgreSQL's type system.
+
+### Core Overloading Patterns
+
+#### 1. **Return Type Specialization**
+```sql
+-- Generic evaluation (returns text)
+CREATE FUNCTION cel_eval(expression text) RETURNS text;
+CREATE FUNCTION cel_eval_json(expression text, json_data text) RETURNS text;
+
+-- Type-specific evaluation (returns native PostgreSQL types)
+CREATE FUNCTION cel_eval_bool(expression text) RETURNS boolean;
+CREATE FUNCTION cel_eval_int(expression text) RETURNS integer;
+CREATE FUNCTION cel_eval_double(expression text) RETURNS double precision;
+CREATE FUNCTION cel_eval_string(expression text) RETURNS text;
+```
+
+**Why needed**: PostgreSQL requires explicit return types for optimal query planning and type checking. Generic `text` returns force casting, while typed returns integrate seamlessly with PostgreSQL's type system.
+
+#### 2. **Input Parameter Variations**
+```sql
+-- Simple variable environment
+CREATE FUNCTION cel_eval_bool(expression text, var_name text, var_value text) RETURNS boolean;
+
+-- JSON-based variable environment  
+CREATE FUNCTION cel_eval_bool(expression text, json_data text) RETURNS boolean;
+
+-- No variables (constants only)
+CREATE FUNCTION cel_eval_bool(expression text) RETURNS boolean;
+```
+
+**Why needed**: Different use cases require different ways to pass variables to CEL expressions. Overloading allows natural SQL syntax for each scenario.
+
+#### 3. **Performance Optimization Variants**
+```sql
+-- Standard cached evaluation
+CREATE FUNCTION cel_eval(expression text) RETURNS text;
+
+-- Direct evaluation (bypasses cache for one-time expressions)
+CREATE FUNCTION cel_eval_direct(expression text) RETURNS text;
+```
+
+**Why needed**: Some expressions benefit from caching, others don't. Overloading provides explicit control over caching behavior.
+
+### Implementation Guidelines
+
+#### When to Add Function Overloads
+
+1. **New Return Types**: Add when CEL can produce a type not covered by existing functions
+2. **New Input Patterns**: Add when users need a fundamentally different way to pass data
+3. **Performance Variants**: Add when specific use cases need different optimization strategies
+
+#### Naming Conventions
+
+- **Base function**: `cel_eval` (generic text return)
+- **Type-specific**: `cel_eval_[type]` (e.g., `cel_eval_bool`, `cel_eval_int`)
+- **Input variants**: Same name, different parameters (PostgreSQL handles disambiguation)
+- **Special modes**: `cel_eval_[mode]` (e.g., `cel_eval_direct`, `cel_compile_check`)
+
+#### Implementation Pattern
+
+1. **C Backend**: Single implementation function (e.g., `pg_cel_eval_json`)
+2. **PL/pgSQL Wrappers**: Multiple SQL functions calling the same C function
+3. **Type Conversion**: PL/pgSQL handles PostgreSQL type conversion from C string results
+
+```sql
+-- Example: Boolean return type wrapper
+CREATE OR REPLACE FUNCTION cel_eval_bool(expression text, json_data text)
+RETURNS boolean
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    result text;
+BEGIN
+    result := pg_cel_eval_json(expression, json_data);
+    RETURN result::boolean;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'CEL evaluation error: %', SQLERRM;
+END;
+$$;
+```
+
+### Benefits of This Approach
+
+1. **Type Safety**: PostgreSQL enforces correct types at query planning time
+2. **Performance**: No runtime type casting in application code
+3. **Developer Experience**: Natural SQL syntax for different use cases
+4. **Backward Compatibility**: New overloads don't break existing code
+5. **Query Optimization**: PostgreSQL can optimize based on known return types
+
+### Common Mistakes to Avoid
+
+- **Don't** create overloads that differ only in internal implementation details
+- **Don't** overload when a single function with optional parameters would suffice
+- **Do** ensure all overloads have clear, distinct use cases
+- **Do** maintain consistent naming across overload families
+- **Do** document the purpose of each overload variant
 
 ## Documentation Standards
 

@@ -1,0 +1,309 @@
+name: BDD Tests
+
+on:
+  push:
+    branches: [ feature/godog-testing, main ]
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'features/**'
+      - 'tests/**'
+      - 'setup_bdd_tests.sh'
+      - '.github/workflows/bdd-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  bdd-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        postgres-version: [14, 15, 16, 17]
+        go-version: ['1.24']
+
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres-version }}
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_pgcel
+          POSTGRES_USER: postgres
+        options: >-
+          --health-cmd "pg_isready -h localhost -p 5432 -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go-version }}
+        check-latest: true
+
+    - name: Install PostgreSQL client and dev packages
+      run: |
+        # Add PostgreSQL official APT repository
+        curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+        echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+        sudo apt-get update
+        # Install build dependencies
+        sudo apt-get install -y build-essential gcc make pkg-config
+        sudo apt-get install -y postgresql-client postgresql-server-dev-${{ matrix.postgres-version }}
+
+    - name: Set PG_CONFIG environment
+      run: |
+        echo "PG_CONFIG=/usr/lib/postgresql/${{ matrix.postgres-version }}/bin/pg_config" >> $GITHUB_ENV
+        # Verify pg_config is available
+        ls -la /usr/lib/postgresql/${{ matrix.postgres-version }}/bin/pg_config
+        /usr/lib/postgresql/${{ matrix.postgres-version }}/bin/pg_config --version
+        
+        # Verify service container PostgreSQL version matches
+        echo "Verifying PostgreSQL service container..."
+        for i in {1..10}; do
+          if pg_isready -h localhost -p 5432 -U postgres; then
+            echo "PostgreSQL service is ready!"
+            psql -h localhost -p 5432 -U postgres -d test_pgcel -c "SELECT version();" || echo "Version check failed"
+            break
+          fi
+          echo "Attempt $i: PostgreSQL not ready yet, waiting..."
+          sleep 2
+        done
+
+    - name: Install Go dependencies
+      run: |
+        echo "Installing Go dependencies..."
+        go mod download
+        go mod verify
+        echo "Go dependencies installed successfully"
+
+    - name: Build pg-cel extension
+      env:
+        CGO_ENABLED: 1
+        CC: gcc
+        V: 1
+      run: |
+        export PG_CONFIG=/usr/lib/postgresql/${{ matrix.postgres-version }}/bin/pg_config
+        echo "Building with PostgreSQL version: ${{ matrix.postgres-version }}"
+        echo "PG_CONFIG path: $PG_CONFIG"
+        echo "Go version: $(go version)"
+        echo "CGO_ENABLED: $CGO_ENABLED"
+        echo "CC: $CC"
+        echo "Platform: $(uname -s)"
+        echo "Architecture: $(uname -m)"
+        
+        # Verify PostgreSQL configuration
+        echo "PostgreSQL version check:"
+        $PG_CONFIG --version
+        echo "PostgreSQL directories:"
+        echo "pkglibdir: $($PG_CONFIG --pkglibdir)"
+        echo "sharedir: $($PG_CONFIG --sharedir)"
+        
+        # Verify Go toolchain compatibility
+        echo "Go environment:"
+        go env | grep -E "(GOOS|GOARCH|CGO|CC)"
+        
+        # Check GCC compatibility  
+        echo "GCC version:"
+        gcc --version
+        
+        # Test Go build capability with verbose output
+        echo "Testing Go CGO build..."
+        go build -v -x -buildmode=c-archive -o test.a main.go 2>&1 || {
+          echo "Go CGO build test failed"
+          echo "Checking build environment..."
+          find /usr/include -name "*.h" -path "*postgres*" 2>/dev/null | head -5 || echo "No PostgreSQL headers found in standard location"
+          echo "Available pg_config details:"
+          $PG_CONFIG --includedir
+          $PG_CONFIG --libdir  
+          $PG_CONFIG --pkglibdir
+          exit 1
+        }
+        ls -la test.a 2>/dev/null && rm test.a || echo "Go archive test cleanup"
+        
+        # Run actual build with explicit PG_CONFIG passed to make
+        echo "Starting actual build..."
+        make clean PG_CONFIG=$PG_CONFIG
+        make PG_CONFIG=$PG_CONFIG
+
+    - name: Install pg-cel extension in container
+      run: |
+        echo "Installing extension inside PostgreSQL container..."
+        
+        # Verify build artifacts exist on host
+        echo "Checking build artifacts on host:"
+        ls -la pg_cel.so pg_cel_go.a pg_cel_go.h pg_cel.control pg_cel--*.sql 2>/dev/null || {
+          echo "Build artifacts missing, checking directory contents:"
+          ls -la
+          echo "Build may have failed"
+          exit 1
+        }
+        
+        # Get the PostgreSQL container ID
+        CONTAINER_ID=$(docker ps --filter "ancestor=postgres:${{ matrix.postgres-version }}" --format "{{.ID}}")
+        echo "PostgreSQL container ID: $CONTAINER_ID"
+        
+        if [ -z "$CONTAINER_ID" ]; then
+          echo "ERROR: Could not find PostgreSQL container"
+          docker ps
+          exit 1
+        fi
+        
+        # Install build dependencies in the container
+        echo "Installing PostgreSQL dev tools in container..."
+        docker exec $CONTAINER_ID bash -c "apt-get update && apt-get install -y postgresql-server-dev-${{ matrix.postgres-version }}"
+        
+        # Get PostgreSQL paths from inside the container
+        echo "Getting PostgreSQL paths from container..."
+        CONTAINER_PKGLIBDIR=$(docker exec $CONTAINER_ID pg_config --pkglibdir)
+        CONTAINER_SHAREDIR=$(docker exec $CONTAINER_ID pg_config --sharedir)
+        echo "Container pkglibdir: $CONTAINER_PKGLIBDIR"
+        echo "Container sharedir: $CONTAINER_SHAREDIR"
+        
+        # Copy extension files to container
+        echo "Copying extension files to container..."
+        docker cp pg_cel.so $CONTAINER_ID:/tmp/pg_cel.so
+        docker cp pg_cel.control $CONTAINER_ID:/tmp/pg_cel.control
+        
+        # Copy SQL files individually to avoid glob expansion issues
+        for sql_file in pg_cel--*.sql; do
+          if [ -f "$sql_file" ]; then
+            echo "Copying $sql_file to container..."
+            docker cp "$sql_file" $CONTAINER_ID:/tmp/
+          fi
+        done
+        
+        # Install extension files in container
+        echo "Installing extension files in container..."
+        docker exec -e CONTAINER_PKGLIBDIR="$CONTAINER_PKGLIBDIR" -e CONTAINER_SHAREDIR="$CONTAINER_SHAREDIR" $CONTAINER_ID bash -c '
+          cp /tmp/pg_cel.so $CONTAINER_PKGLIBDIR/pg_cel.so &&
+          cp /tmp/pg_cel.control $CONTAINER_SHAREDIR/extension/pg_cel.control &&
+          cp /tmp/pg_cel--*.sql $CONTAINER_SHAREDIR/extension/ &&
+          
+          # Verify installation
+          ls -la $CONTAINER_PKGLIBDIR/pg_cel.so &&
+          ls -la $CONTAINER_SHAREDIR/extension/pg_cel* &&
+          
+          echo "Extension installed successfully in container!"
+        ' || {
+          echo "Extension installation in container failed"
+          exit 1
+        }
+        
+        echo "Extension installation completed!"
+
+    - name: Setup test database
+      env:
+        PGHOST: localhost
+        PGPORT: 5432
+        PGUSER: postgres
+        PGPASSWORD: postgres
+        TEST_DB: test_pgcel
+      run: |
+        # Wait for PostgreSQL to be ready
+        echo "Waiting for PostgreSQL ${{ matrix.postgres-version }} to be ready..."
+        for i in {1..30}; do
+          if pg_isready -h localhost -p 5432 -U postgres; then
+            echo "PostgreSQL is ready!"
+            break
+          fi
+          echo "Attempt $i: PostgreSQL not ready yet, waiting..."
+          sleep 2
+        done
+        
+        # Verify PostgreSQL is actually ready
+        if ! pg_isready -h localhost -p 5432 -U postgres; then
+          echo "PostgreSQL failed to become ready after 60 seconds"
+          exit 1
+        fi
+        
+        echo "PostgreSQL is ready. Creating test database..."
+        # The database should already exist from the service, but let's make sure
+        createdb test_pgcel 2>/dev/null || echo "Database test_pgcel already exists"
+        
+        echo "Installing pg-cel extension..."
+        # Enable pg-cel extension
+        psql -d test_pgcel -c "CREATE EXTENSION IF NOT EXISTS pg_cel;" || {
+          echo "Extension installation failed, checking extension availability..."
+          psql -d test_pgcel -c "SELECT * FROM pg_available_extensions WHERE name='pg_cel';" || echo "Extension not available"
+          
+          # Check if extension files are visible from PostgreSQL
+          echo "Checking if extension files are accessible from PostgreSQL..."
+          psql -d test_pgcel -c "SHOW shared_preload_libraries;" || echo "Could not check shared libraries"
+          
+          # Get container ID and check extension files inside container
+          CONTAINER_ID=$(docker ps --filter "ancestor=postgres:${{ matrix.postgres-version }}" --format "{{.ID}}")
+          if [ -n "$CONTAINER_ID" ]; then
+            echo "Checking extension files in container $CONTAINER_ID:"
+            docker exec $CONTAINER_ID bash -c '
+              echo "Container PostgreSQL config:"
+              pg_config --pkglibdir
+              pg_config --sharedir
+              echo "Extension files in container:"
+              ls -la $(pg_config --pkglibdir)/pg_cel* 2>/dev/null || echo "No pg_cel.so found"
+              ls -la $(pg_config --sharedir)/extension/pg_cel* 2>/dev/null || echo "No pg_cel extension files found"
+            '
+          fi
+          
+          exit 1
+        }
+        
+        echo "Verifying pg-cel extension works..."
+        # Verify extension works
+        psql -d test_pgcel -c "SELECT cel_eval('1 + 1') as test;" || {
+          echo "Extension test failed, checking extension status..."
+          psql -d test_pgcel -c "SELECT * FROM pg_extension WHERE extname='pg_cel';"
+          exit 1
+        }
+        
+        echo "Extension verification successful!"
+
+    - name: Run BDD tests
+      env:
+        PGHOST: localhost
+        PGPORT: 5432
+        PGUSER: postgres
+        PGPASSWORD: postgres
+        TEST_DB: test_pgcel
+        POSTGRES_USER: postgres
+      run: |
+        echo "Running BDD tests with environment:"
+        echo "PGHOST=$PGHOST"
+        echo "PGPORT=$PGPORT"
+        echo "PGUSER=$PGUSER"
+        echo "TEST_DB=$TEST_DB"
+        echo "POSTGRES_USER=$POSTGRES_USER"
+        
+        # Verify database connectivity before running tests
+        echo "Testing database connectivity..."
+        psql -d test_pgcel -c "SELECT version();" || {
+          echo "Database connectivity test failed"
+          exit 1
+        }
+        
+        # Run the actual BDD tests
+        cd tests && go test -v -run TestFeatures
+
+    - name: Run BDD tests with coverage
+      env:
+        PGHOST: localhost
+        PGPORT: 5432
+        PGUSER: postgres
+        PGPASSWORD: postgres
+        TEST_DB: test_pgcel
+        POSTGRES_USER: postgres
+      run: |
+        cd tests && go test -v -coverprofile=../bdd-coverage.out -run TestFeatures
+
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: bdd-coverage-pg${{ matrix.postgres-version }}
+        path: bdd-coverage.out

@@ -197,6 +197,60 @@ The extension uses two separate high-performance Ristretto caches:
 
 Use `cel_compile_check()` to validate expressions before using them in production queries.
 
+## Testing
+
+pg-cel includes comprehensive test suites to ensure reliability and correctness.
+
+### Unit Tests
+Traditional SQL-based tests covering core functionality:
+```bash
+# Run basic unit tests
+./build.sh test
+
+# Or manually
+psql -d your_database -f test.sql
+```
+
+### BDD Tests with Godog
+Behavior-Driven Development tests using Gherkin syntax and godog:
+
+```bash
+# Setup test environment
+./setup_bdd_tests.sh
+
+# Run all BDD tests
+make bdd-test
+
+# Run with pretty output
+make bdd-test-pretty
+
+# Run with JUnit output for CI
+make bdd-test-junit
+```
+
+#### BDD Test Coverage
+The BDD tests cover:
+- **CEL Expression Evaluation**: Basic and complex expressions
+- **JSON Data Processing**: Nested objects, arrays, filtering, mapping
+- **Caching Performance**: Hit rates, memory limits, eviction policies
+- **Error Handling**: Syntax errors, type mismatches, runtime failures
+- **PostgreSQL Integration**: SQL functions, transactions, data types
+- **Advanced Features**: Regular expressions, timestamps, mathematical functions
+
+#### Running Specific BDD Scenarios
+```bash
+# Run tests with specific tags
+go test -v -godog.tags="@advanced" ./godog_main_test.go ./godog_test.go
+
+# Run performance tests
+go test -v -godog.tags="@performance" ./godog_main_test.go ./godog_test.go
+
+# Run with custom database
+TEST_DB=my_test_db ./setup_bdd_tests.sh
+```
+
+See `features/README.md` for detailed BDD testing documentation.
+
 ## Error Handling
 
 The extension provides robust error handling:

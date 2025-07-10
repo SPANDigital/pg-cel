@@ -80,11 +80,15 @@ jobs:
         
     - name: Test build
       run: |
-        # Start PostgreSQL service
-        sudo systemctl start postgresql
-        sudo -u postgres createdb test_db
-        sudo -u postgres psql -d test_db -c "CREATE EXTENSION pg_cel;"
-        sudo -u postgres psql -d test_db -c "SELECT cel_eval('2 + 3');"
+        # Stop default PostgreSQL service and start the correct version
+        sudo systemctl stop postgresql
+        sudo systemctl start postgresql@${{ matrix.pg_version }}-main
+        sudo systemctl status postgresql@${{ matrix.pg_version }}-main
+        
+        # Create test database with the correct PostgreSQL version
+        sudo -u postgres /usr/lib/postgresql/${{ matrix.pg_version }}/bin/createdb test_db
+        sudo -u postgres /usr/lib/postgresql/${{ matrix.pg_version }}/bin/psql -d test_db -c "CREATE EXTENSION pg_cel;"
+        sudo -u postgres /usr/lib/postgresql/${{ matrix.pg_version }}/bin/psql -d test_db -c "SELECT cel_eval('2 + 3');"
         
     - name: Package artifacts
       run: |

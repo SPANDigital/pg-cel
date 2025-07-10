@@ -8,13 +8,13 @@ The extension provides two configurable parameters that can be set in your Postg
 
 ### `pg_cel.program_cache_size_mb`
 - **Purpose**: Sets the maximum size of the CEL program compilation cache in megabytes
-- **Default**: 256 MB
+- **Default**: 128 MB
 - **Range**: 64 MB to 8192 MB (8 GB)
 - **Restart Required**: No (PGC_SUSET - can be changed by superuser)
 
 ### `pg_cel.json_cache_size_mb`
 - **Purpose**: Sets the maximum size of the JSON parsing cache in megabytes
-- **Default**: 128 MB
+- **Default**: 64 MB
 - **Range**: 32 MB to 4096 MB (4 GB)
 - **Restart Required**: No (PGC_SUSET - can be changed by superuser)
 

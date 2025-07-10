@@ -136,8 +136,8 @@ make clean           # Clean build artifacts
 ### Cache Settings (postgresql.conf)
 
 ```
-pg_cel.program_cache_size_mb = 256  # Default 256MB
-pg_cel.json_cache_size_mb = 128     # Default 128MB
+pg_cel.program_cache_size_mb = 256  # Default 128MB
+pg_cel.json_cache_size_mb = 128     # Default 64MB
 ```
 
 ### Environment Variables

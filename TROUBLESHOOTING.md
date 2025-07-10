@@ -51,8 +51,8 @@ If you encounter performance issues:
 1. Check cache statistics: `SELECT cel_cache_stats();`
 2. Adjust cache sizes in postgresql.conf:
    ```
-   pg_cel.program_cache_size_mb = 256  # Default 256MB
-   pg_cel.json_cache_size_mb = 128     # Default 128MB
+   pg_cel.program_cache_size_mb = 256  # Default 128MB
+   pg_cel.json_cache_size_mb = 128     # Default 64MB
    ```
 3. Restart PostgreSQL after changing configuration
 

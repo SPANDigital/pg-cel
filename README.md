@@ -8,8 +8,8 @@ This extension allows you to evaluate [Google's CEL (Common Expression Language)
 - Evaluate CEL expressions as PostgreSQL functions
 - Support for JSON data input with full CEL syntax
 - **High-performance dual caching system** using [Ristretto](https://github.com/dgraph-io/ristretto)
-  - CEL program compilation caching (configurable, default 256MB)
-  - JSON parsing caching (configurable, default 128MB)
+  - CEL program compilation caching (configurable, default 128MB)
+  - JSON parsing caching (configurable, default 64MB)
   - Runtime cache statistics and management
 - Type-safe convenience functions for boolean, numeric, and string results
 - Expression validation and compilation checking
@@ -148,8 +148,8 @@ The extension supports configurable cache sizes via PostgreSQL configuration par
 
 ```conf
 # postgresql.conf
-pg_cel.program_cache_size_mb = 512     # CEL program cache size (default: 256MB)
-pg_cel.json_cache_size_mb = 256        # JSON cache size (default: 128MB)
+pg_cel.program_cache_size_mb = 512     # CEL program cache size (default: 128MB)
+pg_cel.json_cache_size_mb = 256        # JSON cache size (default: 64MB)
 ```
 
 ### Cache Monitoring

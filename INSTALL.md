@@ -116,8 +116,8 @@ You can configure cache sizes in your `postgresql.conf`:
 
 ```
 # pg-cel configuration
-pg_cel.program_cache_size_mb = 256  # Default: 256MB
-pg_cel.json_cache_size_mb = 128     # Default: 128MB
+pg_cel.program_cache_size_mb = 256  # Default: 128MB
+pg_cel.json_cache_size_mb = 128     # Default: 64MB
 ```
 
 After modifying the configuration, restart PostgreSQL:

@@ -11,6 +11,9 @@ on:
       - 'setup_bdd_tests.sh'
       - '.github/workflows/bdd-tests.yml'
 
+permissions:
+  contents: read
+
 jobs:
   bdd-tests:
     runs-on: ubuntu-latest

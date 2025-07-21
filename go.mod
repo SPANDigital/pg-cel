@@ -6,11 +6,11 @@ toolchain go1.24.3
 
 require (
 	github.com/dgraph-io/ristretto/v2 v2.2.0
-	github.com/google/cel-go v0.25.0
+	github.com/google/cel-go v0.26.0
 )
 
 require (
-	cel.dev/expr v0.23.1 // indirect
+	cel.dev/expr v0.24.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
